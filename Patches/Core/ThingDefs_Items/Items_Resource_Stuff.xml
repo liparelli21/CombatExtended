@@ -180,6 +180,7 @@
 					<power>2</power>
 					<cooldownTime>0.99</cooldownTime>
 					<armorPenetrationBlunt>0.288</armorPenetrationBlunt>
+					<reach>0.4</reach>
 				</li>
 			</tools>
 		</value>

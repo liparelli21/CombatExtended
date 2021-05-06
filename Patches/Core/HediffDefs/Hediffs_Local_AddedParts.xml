@@ -66,6 +66,7 @@
 					<armorPenetrationSharp>0.8</armorPenetrationSharp>
 					<armorPenetrationBlunt>4</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>Blade</linkedBodyPartsGroup>
+					<reach>0.05</reach>
 				</li>
 			</tools>
 		</value>
