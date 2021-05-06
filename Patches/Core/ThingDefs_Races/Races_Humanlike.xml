@@ -44,6 +44,16 @@
 					<armorPenetrationBlunt>0.250</armorPenetrationBlunt>
 				</li>
 				<li Class="CombatExtended.ToolCE">
+					<label>feet</label>
+					<capacities>
+						<li>Blunt</li>
+					</capacities>
+					<power>1</power>
+					<cooldownTime>2.6</cooldownTime>
+					<linkedBodyPartsGroup>Feet</linkedBodyPartsGroup>
+					<armorPenetrationBlunt>0.30</armorPenetrationBlunt>
+				</li>
+				<li Class="CombatExtended.ToolCE">
 					<label>head</label>
 					<capacities>
 						<li>Blunt</li>

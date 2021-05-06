@@ -23,15 +23,20 @@ namespace CombatExtended
         public FloatRange HeightRange => new FloatRange(heightRange.min, heightRange.max);
         public float Min => heightRange.min;
         public float Max => heightRange.max;
-        public float BottomHeight => Max * BodyRegionBottomHeight;
-        public float MiddleHeight => Max * BodyRegionMiddleHeight;
+        public float BottomHeight => Min + heightRange.Span * BodyRegionBottomHeight;
+        public float MiddleHeight => Min + heightRange.Span * BodyRegionMiddleHeight;
 
         public CollisionVertical(Thing thing)
         {
-            CalculateHeightRange(thing, out heightRange, out shotHeight);
+            CalculateHeightRange(thing, thing.Position, out heightRange, out shotHeight);
         }
         
-        private static void CalculateHeightRange(Thing thing, out FloatRange heightRange, out float shotHeight)
+        public CollisionVertical(Thing thing, IntVec3 position)
+        {
+            CalculateHeightRange(thing, position, out heightRange, out shotHeight);
+        }
+
+        private static void CalculateHeightRange(Thing thing, IntVec3 position, out FloatRange heightRange, out float shotHeight)
         {
             shotHeight = 0;
             heightRange = new FloatRange(0, 0);
@@ -83,7 +88,7 @@ namespace CombatExtended
                     
                     // Find the highest adjacent cover
                     Map map = pawn.Map;
-                    foreach(IntVec3 curCell in GenAdjFast.AdjacentCells8Way(pawn.Position))
+                    foreach (IntVec3 curCell in GenAdjFast.AdjacentCells8Way(position))
                     {
                         if (curCell.InBounds(map))
                         {
@@ -105,7 +110,7 @@ namespace CombatExtended
             var edificeHeight = 0f;
             if (thing.Map != null)
             {
-                var edifice = thing.Position.GetCover(thing.Map);
+                var edifice = position.GetCover(thing.Map);
                 if (edifice != null && edifice.GetHashCode() != thing.GetHashCode() && !edifice.IsPlant())
                 {
                     edificeHeight = new CollisionVertical(edifice).heightRange.max;
@@ -121,16 +126,31 @@ namespace CombatExtended
         /// </summary>
         /// <param name="projectileHeight">The height of the projectile at time of impact.</param>
         /// <returns>BodyPartHeight between Bottom and Top.</returns>
-        public BodyPartHeight GetCollisionBodyHeight(float projectileHeight)
+        public BodyPartHeight GetCollisionBodyHeight(float projectileHeight, bool ignoreBounds = true)
         {
-            if (projectileHeight < BottomHeight) return BodyPartHeight.Bottom;
+            if (!ignoreBounds && projectileHeight < Min) return BodyPartHeight.Undefined;
+            else if (projectileHeight < BottomHeight) return BodyPartHeight.Bottom;
             else if (projectileHeight < MiddleHeight) return BodyPartHeight.Middle;
-            return BodyPartHeight.Top;
+            else if (ignoreBounds || projectileHeight < Max) return BodyPartHeight.Top;
+            else return BodyPartHeight.Undefined;
         }
 
-        public BodyPartHeight GetRandWeightedBodyHeightBelow(float threshold)
+        public FloatRange RangeRegion(BodyPartHeight region)
         {
-            return GetCollisionBodyHeight(Rand.Range(Min, threshold));
+            if (region == BodyPartHeight.Bottom)
+                return new FloatRange(Min, BottomHeight);
+            else if (region == BodyPartHeight.Middle)
+                return new FloatRange(BottomHeight, MiddleHeight);
+            else if (region == BodyPartHeight.Top)
+                return new FloatRange(MiddleHeight, Max);
+            else
+                return new FloatRange(0, 0);
+        }
+
+        public float WeightForRegion(FloatRange range, BodyPartHeight region)
+        {
+            var regionRange = RangeRegion(region);
+            return (Mathf.Min(range.max, regionRange.max) - Mathf.Max(range.min, regionRange.min)) / regionRange.Span;
         }
     }
 }

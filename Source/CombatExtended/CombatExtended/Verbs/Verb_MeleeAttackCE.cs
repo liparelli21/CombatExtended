@@ -55,11 +55,36 @@ namespace CombatExtended
         public float ArmorPenetrationSharp => (tool as ToolCE)?.armorPenetrationSharp * (EquipmentSource?.GetStatValue(CE_StatDefOf.MeleePenetrationFactor) ?? 1) ?? 0;
         public float ArmorPenetrationBlunt => (tool as ToolCE)?.armorPenetrationBlunt * (EquipmentSource?.GetStatValue(CE_StatDefOf.MeleePenetrationFactor) ?? 1) ?? 0;
 
+        public BodyPartHeight AttackPartHeight => (tool as ToolCE)?.AttackPartHeight(CasterPawn) ?? BodyPartHeight.Undefined;
+        public float Reach => (tool as ToolCE)?.reach ?? 0;
         bool isCrit;
 
         #endregion
 
         #region Methods
+
+        public override bool CanHitTargetFrom(IntVec3 root, LocalTargetInfo targ)
+        {
+            // NEW FALSE: Check that attacker and target are the right height
+            if (!AttackerReach(root, targ, out var _))
+                return false;
+
+            return base.CanHitTargetFrom(root, targ);
+            // TODO: NEW TRUE: Check that distance between fighters can be matched by reach
+        }
+
+        public override bool IsUsableOn(Thing target)
+        {
+            if (CasterPawn == null || !(target is Pawn))
+                return true;
+
+            var castPositionReq = new CastPositionRequest() { 
+                caster = CasterPawn, 
+                target = target, 
+                verb = this,
+                maxRangeFromTarget = EffectiveRange };
+            return CastPositionFinder.TryFindCastPosition(castPositionReq, out var _);
+        }
 
         /// <summary>
         /// Performs the actual melee attack part. Awards XP, calculates and applies whether an attack connected and the outcome.
@@ -449,6 +474,63 @@ namespace CombatExtended
             }
         }
 
+        private bool AttackerReach(IntVec3 root, LocalTargetInfo target, out FloatRange range)
+        {
+            Pawn pawn = target.Thing as Pawn;
+
+            if (CasterPawn == null)
+            {
+                if (pawn == null)
+                {
+                    range = new FloatRange(0, float.MaxValue);
+                    return true;
+                }
+                else
+                {
+                    range = new CollisionVertical(pawn).HeightRange;
+                    return true;
+                }
+            }
+
+            var casterVert = new CollisionVertical(CasterPawn, root);
+            var attackRegion = AttackPartHeight;
+
+            // ASSUMING CERTAIN VIABLE ARM MOVEMENTS
+            //
+            // Bottom:
+            //     - Leg length, and a slight range increase of absolue value Reach to kick torso parts some times
+            //
+            // Middle:
+            //     - Arm length plus Reach in both up and down directions
+            //
+            // Top:
+            //     - Neck height to top of head, with improvements of Reach
+            //
+            if (attackRegion == BodyPartHeight.Bottom)
+                range = new FloatRange(casterVert.Min - Reach, casterVert.BottomHeight + Reach);
+            else if (attackRegion == BodyPartHeight.Middle)
+                range = new FloatRange(casterVert.BottomHeight - 0.05f - Reach, casterVert.MiddleHeight - 0.05f + casterVert.RangeRegion(attackRegion).Span + Reach);
+            else if (attackRegion == BodyPartHeight.Top)
+                range = new FloatRange(casterVert.MiddleHeight - Reach, casterVert.Max + Reach);
+            else
+                range = casterVert.HeightRange;
+
+            if (pawn != null)
+            {
+                var targetHeight = new CollisionVertical(pawn).HeightRange;
+                range.min = Mathf.Max(range.min, targetHeight.min);
+                range.max = Mathf.Min(range.max, targetHeight.max);
+
+                if (range.min > range.max)
+                {
+                    range = new FloatRange(0, 0);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// Selects a random BodyPartHeight out of the ones our CasterPawn can hit, depending on our body size vs the target's. So a rabbit can hit top height of another rabbit, but not of a human.
         /// </summary>
@@ -457,12 +539,36 @@ namespace CombatExtended
         private BodyPartHeight GetBodyPartHeightFor(LocalTargetInfo target)
         {
             Pawn pawn = target.Thing as Pawn;
-            if (pawn == null || CasterPawn == null) return BodyPartHeight.Undefined;
-            var casterReach = new CollisionVertical(CasterPawn).Max * 1.2f;
+            if (pawn == null || CasterPawn == null || !AttackerReach(target.Cell, target, out var reachRange))
+                return BodyPartHeight.Undefined;
+
             var targetHeight = new CollisionVertical(pawn);
-            BodyPartHeight maxHeight = targetHeight.GetRandWeightedBodyHeightBelow(casterReach);
-            BodyPartHeight height = (BodyPartHeight)Rand.RangeInclusive(1, (int)maxHeight);
-            return height;
+
+            // ESTIMATE MAXIMUM HEIGHT
+            BodyPartHeight minHeight = targetHeight.GetCollisionBodyHeight(reachRange.min, true);
+            BodyPartHeight maxHeight = targetHeight.GetCollisionBodyHeight(reachRange.max, true);
+
+            // SELECT BODYPARTS CONSIDERING MAXIMUM HEIGHT
+            //Essentially Verse.HediffSet.GetRandomNotMissingPart(), except only <= maxHeight
+            IEnumerable<BodyPartRecord> enumerable;
+            if (minHeight == maxHeight)
+                enumerable = pawn.health.hediffSet.GetNotMissingParts(minHeight, BodyPartDepth.Outside);
+            else
+                enumerable = pawn.health.hediffSet.GetNotMissingParts(BodyPartHeight.Undefined, BodyPartDepth.Outside)
+                    .Where(x => x.height <= maxHeight && x.height >= minHeight);
+
+            // WEIGHT TOWARDS 'MOST LIKELY HEIGHT'
+            //1. Assume preferred attack height is the height at which guns are fired
+
+            // RANDOMIZE BY ACTUAL BODYPARTS' COVERAGE
+            if (enumerable.TryRandomElementByWeight(x => 
+                        x.coverageAbs
+                        * x.def.GetHitChanceFactorFor(verbProps.meleeDamageDef)
+                        * targetHeight.WeightForRegion(reachRange, x.height), out var result))
+                return result.height;
+            if (enumerable.TryRandomElementByWeight(x => x.coverageAbs * targetHeight.WeightForRegion(reachRange, x.height), out result))
+                return result.height;
+            return BodyPartHeight.Undefined;
         }
 
         // unmodified

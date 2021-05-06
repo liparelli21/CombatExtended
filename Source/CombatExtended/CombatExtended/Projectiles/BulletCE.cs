@@ -81,7 +81,7 @@ namespace CombatExtended
                 // Set impact height
                 BodyPartDepth partDepth = damDefCE.harmOnlyOutsideLayers ? BodyPartDepth.Outside : BodyPartDepth.Undefined;
                 //NOTE: ExactPosition.y isn't always Height at the point of Impact!
-                BodyPartHeight partHeight = new CollisionVertical(hitThing).GetCollisionBodyHeight(ExactPosition.y);
+                BodyPartHeight partHeight = new CollisionVertical(hitThing).GetCollisionBodyHeight(ExactPosition.y, true);
                 dinfo.SetBodyRegion(partHeight, partDepth);
                 if (damDefCE.harmOnlyOutsideLayers) dinfo.SetBodyRegion(BodyPartHeight.Undefined, BodyPartDepth.Outside);
 
