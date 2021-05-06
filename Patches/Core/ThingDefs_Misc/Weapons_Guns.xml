@@ -17,6 +17,7 @@
           <chanceFactor>1.5</chanceFactor>
           <armorPenetrationBlunt>0.555</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Grip</linkedBodyPartsGroup>
+		  <reach>0.01</reach>
         </li>
         <li Class="CombatExtended.ToolCE">
           <label>muzzle</label>
@@ -27,6 +28,7 @@
           <cooldownTime>1.54</cooldownTime>
           <armorPenetrationBlunt>0.555</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Muzzle</linkedBodyPartsGroup>
+		  <reach>0.1</reach>
         </li>
       </tools>
     </value>
@@ -46,6 +48,7 @@
           <chanceFactor>1.5</chanceFactor>
           <armorPenetrationBlunt>2.755</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Stock</linkedBodyPartsGroup>
+		  <reach>0.2</reach>
         </li>
         <li Class="CombatExtended.ToolCE">
           <label>barrel</label>
@@ -56,6 +59,7 @@
           <cooldownTime>2.02</cooldownTime>
           <armorPenetrationBlunt>1.630</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrel</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
         <li Class="CombatExtended.ToolCE">
           <label>muzzle</label>
@@ -66,6 +70,7 @@
           <cooldownTime>1.55</cooldownTime>
           <armorPenetrationBlunt>2.755</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Muzzle</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>
@@ -84,6 +89,7 @@
           <cooldownTime>2.44</cooldownTime>
           <armorPenetrationBlunt>3.5</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrel</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>
@@ -845,6 +851,7 @@
           <cooldownTime>2.44</cooldownTime>
           <armorPenetrationBlunt>3.5</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrels</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>
@@ -1165,6 +1172,7 @@
           <cooldownTime>2.44</cooldownTime>
           <armorPenetrationBlunt>3.5</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrel</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>
@@ -1232,6 +1240,7 @@
           <cooldownTime>2.44</cooldownTime>
           <armorPenetrationBlunt>3.5</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrel</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>
@@ -1296,6 +1305,7 @@
           <cooldownTime>2.44</cooldownTime>
           <armorPenetrationBlunt>3.5</armorPenetrationBlunt>
           <linkedBodyPartsGroup>Barrel</linkedBodyPartsGroup>
+		  <reach>0.5</reach>
         </li>
       </tools>
     </value>

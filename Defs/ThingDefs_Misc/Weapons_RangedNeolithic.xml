@@ -141,6 +141,7 @@
 				<cooldownTime>1.35</cooldownTime>
 				<armorPenetrationBlunt>2.25</armorPenetrationBlunt>
 				<linkedBodyPartsGroup>Shaft</linkedBodyPartsGroup>
+				<reach>0.8</reach>
 			</li>
 			<li Class="CombatExtended.ToolCE">
 				<label>point</label>
@@ -153,6 +154,7 @@
 				<armorPenetrationBlunt>1.69</armorPenetrationBlunt>
 				<armorPenetrationSharp>0.34</armorPenetrationSharp>
 				<linkedBodyPartsGroup>Point</linkedBodyPartsGroup>
+				<reach>0.8</reach>
 			</li>
 		</tools>
 		<ammoClass>Javelin</ammoClass>

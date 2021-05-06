@@ -16,6 +16,7 @@
 					<cooldownTime>1.36</cooldownTime>
 					<armorPenetrationBlunt>0.605</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>Handle</linkedBodyPartsGroup>
+					<reach>0.05</reach>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>edge</label>
@@ -28,6 +29,7 @@
 					<armorPenetrationBlunt>3.485</armorPenetrationBlunt>
 					<armorPenetrationSharp>21.78</armorPenetrationSharp>
 					<linkedBodyPartsGroup>Edge</linkedBodyPartsGroup>
+					<reach>0.8</reach>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>point</label>
@@ -38,6 +40,7 @@
 					<cooldownTime>0.85</cooldownTime>
 					<armorPenetrationBlunt>1.173</armorPenetrationBlunt>
 					<armorPenetrationSharp>30.24</armorPenetrationSharp>
+					<reach>0.8</reach>
 				</li>					
 			</tools>
 		</value>
@@ -101,6 +104,7 @@
 					<chanceFactor>0.10</chanceFactor>
 					<armorPenetrationBlunt>1.21</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>Handle</linkedBodyPartsGroup>
+					<reach>0.02</reach>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>head</label>
@@ -118,6 +122,7 @@
 					<armorPenetrationBlunt>190.575</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>Head</linkedBodyPartsGroup>
 					<chanceFactor>0.30</chanceFactor>
+					<reach>0.9</reach>
 				</li>	
 			</tools>
 		</value>
@@ -174,6 +179,7 @@
 					<chanceFactor>0.10</chanceFactor>
 					<armorPenetrationBlunt>0.968</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>Handle</linkedBodyPartsGroup>
+					<reach>0.04</reach>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>edge</label>
@@ -193,6 +199,7 @@
 					<armorPenetrationBlunt>5.576</armorPenetrationBlunt>
 					<armorPenetrationSharp>29.04</armorPenetrationSharp>
 					<linkedBodyPartsGroup>Edge</linkedBodyPartsGroup>
+					<reach>1.2</reach>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>point</label>
@@ -210,6 +217,7 @@
 					<cooldownTime>0.96</cooldownTime>
 					<armorPenetrationBlunt>2.478</armorPenetrationBlunt>
 					<armorPenetrationSharp>38.72</armorPenetrationSharp>
+					<reach>1.2</reach>
 				</li>					
 			</tools>
 		</value>
