@@ -28,7 +28,7 @@ namespace CombatExtended
 
         public CollisionVertical(Thing thing)
         {
-            CalculateHeightRange(thing, thing.Position, out heightRange, out shotHeight);
+            CalculateHeightRange(thing, thing?.Position ?? default, out heightRange, out shotHeight);
         }
         
         public CollisionVertical(Thing thing, IntVec3 position)
