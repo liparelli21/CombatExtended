@@ -41,16 +41,20 @@ namespace CombatExtended
                 {
                     //Races
                     if (ParentDef == null || ParentDef.race != null)
+                    {
                         reach = 0;
-
+                    }
                     //Weapons
-                    bool isOneHanded = ParentDef.weaponTags?.Contains(Apparel_Shield.OneHandedTag) ?? false;
-                    //if (parentDef.HasComp(typeof(CompAmmoUser)))
+                    else
+                    {
+                        bool isOneHanded = ParentDef.weaponTags?.Contains(Apparel_Shield.OneHandedTag) ?? false;
+                        //if (parentDef.HasComp(typeof(CompAmmoUser)))
 
-                    //Bulk is calculated from weapon length in the balance sheet (Bulk(L) = L(mm) / 100)
-                    //To revert back, L(m) = 0.1 * Bulk(L)
-                    //One-handed weapons add their full length, two-handed weapons add half of their length to reach
-                    reach = (isOneHanded ? 0.1f : 0.05f) * ParentDef.GetStatValueAbstract(CE_StatDefOf.Bulk);
+                        //Bulk is calculated from weapon length in the balance sheet (Bulk(L) = L(mm) / 100)
+                        //To revert back, L(m) = 0.1 * Bulk(L)
+                        //One-handed weapons add their full length, two-handed weapons add half of their length to reach
+                        reach = (isOneHanded ? 0.1f : 0.05f) * ParentDef.GetStatValueAbstract(CE_StatDefOf.Bulk);
+                    }
                 }
                 return reach;
             }
