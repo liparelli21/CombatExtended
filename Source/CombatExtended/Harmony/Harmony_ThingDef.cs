@@ -149,90 +149,155 @@ namespace CombatExtended.HarmonyCE
                 {
                     var any = tools.Where(x => x.restrictedReach == MeleeFallback.Automatic && x.ensureLinkedBodyPartsGroupAlwaysUsable);
 
-                    var str = __instance.ToString() + " :: " + (!hasLowerFallback ? (!hasUpperFallback ? "both" : "lower") : "upper") + " fallback";
+                    var str = (!hasLowerFallback ? (!hasUpperFallback ? "both" : "lower") : "upper") + " fallback";
+
+                    if (!any.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
+                    {
+                        //Get BodyPartDef holding BodyPartRecord
+                        //Get PawnCapacityDef:
+                        // Verse.Pawn_HealthTracker ShouldBeDeadFromRequiredCapacity()
+                        // pawn.RaceProps.IsFlesh ? pawnCapacityDef.lethalFlesh : pawnCapacityDef.lethalMechanoids
+                    }
 
                     if (any.Any())
                     {
-                        var limited = (!hasLowerFallback
-                            ? (!hasUpperFallback
-                                ? any.Where(x => x.AttackPartHeight == BodyPartHeight.Top || x.AttackPartHeight == BodyPartHeight.Bottom)
-                                : any.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom))
-                            : any.Where(x => x.AttackPartHeight == BodyPartHeight.Top));
-                        var singleNeed = (!hasLowerFallback
-                                    ? (!hasUpperFallback
-                                        ? MeleeFallback.Nearest
-                                        : MeleeFallback.NearestBelow)
-                                    : MeleeFallback.NearestAbove);
-                        bool needOne = hasLowerFallback || hasUpperFallback;
+                        bool needBothGenders = any.Any(x => x.restrictedGender == Gender.Male) && any.Any(x => x.restrictedGender == Gender.Female);
+                        ToolCE fC;
+                        ToolCE sC;
 
-                        ToolCE firstChanged = null;
-                        ToolCE secondChanged = null;
+                        bool overallSuccess = false;
 
-                        if (any.Count() == 1 || !limited.Any())     //Have to be all on Middle or Undefined
+                        if (!needBothGenders)
                         {
-                            firstChanged = any.First();
-                            firstChanged.restrictedReach = singleNeed;
-                        }
-                        else if (needOne)
-                        {
-                            firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
-                            firstChanged.restrictedReach = singleNeed;
-                        }
-                        else if (!limited.Any(x => x.AttackPartHeight == BodyPartHeight.Top) || !limited.Any(x => x.AttackPartHeight == BodyPartHeight.Bottom))  //There's only one of the needed two
-                        {
-                            firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
-                            secondChanged = any.Except(limited.First()).First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? any.Except(limited.First()).First();
-                            //any.Count() is above 1, so there are others we could use
-                            if (firstChanged.AttackPartHeight == BodyPartHeight.Top)
+                            bool noneSuccess = FallbackHandling(any.Where(x => x.restrictedGender == Gender.None), hasLowerFallback, hasUpperFallback, out fC, out sC);
+                            if (noneSuccess)
                             {
-                                firstChanged.restrictedReach = MeleeFallback.NearestAbove;
-                                secondChanged.restrictedReach = MeleeFallback.NearestBelow;
-                            }
-                            else
-                            {
-                                firstChanged.restrictedReach = MeleeFallback.NearestBelow;
-                                secondChanged.restrictedReach = MeleeFallback.NearestAbove;
+                                str += " was set";
+                                if (fC != null)     str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
+                                if (sC != null)     str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
+                                overallSuccess = true;
                             }
                         }
-                        else    //There are multiple, and we need two (and limited has two)
+                        else
                         {
-                            var top = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Top);
-                            var bottom = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom);
-                            firstChanged = top.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? top.First();
-                            firstChanged.restrictedReach = MeleeFallback.NearestAbove;
-                            secondChanged = bottom.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? bottom.First();
-                            secondChanged.restrictedReach = MeleeFallback.NearestBelow;
-                        }
+                            var male = any.Where(x => x.restrictedGender == Gender.Male || x.restrictedGender == Gender.None);
+                            var female = any.Where(x => x.restrictedGender == Gender.Female);
+                            bool maleSuccess = FallbackHandling(male, hasLowerFallback, hasUpperFallback, out fC, out sC);
+                            if (maleSuccess)
+                            {
+                                str += " was set";
+                                if (fC != null)
+                                {
+                                    str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
+                                    if (fC.restrictedGender == Gender.None)
+                                    {
+                                        hasLowerFallback = hasLowerFallback || fC.LowerFallback;
+                                        hasUpperFallback = hasUpperFallback || fC.UpperFallback;
+                                    }
+                                }
+                                if (sC != null)
+                                {
+                                    str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
+                                    if (sC.restrictedGender == Gender.None)
+                                    {
+                                        hasLowerFallback = hasLowerFallback || sC.LowerFallback;
+                                        hasUpperFallback = hasUpperFallback || sC.UpperFallback;
+                                    }
+                                }
+                                overallSuccess = true;
+                            }
 
-                        str += " was set";
-                        if (firstChanged != null)
-                        {
-                            var firstName = firstChanged.ToString().NullOrEmpty() ? (firstChanged.linkedBodyPartsGroup?.ToString() ?? firstChanged.id) : firstChanged.ToString();
-                            str += " (" + firstName + "->" + firstChanged.restrictedReach + ")";
-                        }
-                        if (secondChanged != null)
-                        {
-                            var secondName = secondChanged.ToString().NullOrEmpty() ? (secondChanged.linkedBodyPartsGroup?.ToString() ?? secondChanged.id) : secondChanged.ToString();
-                            str += " (" + secondName + "->" + secondChanged.restrictedReach + ")";
-                        }
-                        str += ". If this is desired, please set <restrictedReach> to the same value in XML to hide this warning.";
+                            bool femaleSuccess = FallbackHandling(female, hasLowerFallback, hasUpperFallback, out fC, out sC);
+                            if (femaleSuccess)
+                            {
+                                if (!maleSuccess)
+                                    str += " was set";
 
-                        Log.Warning(str);
+                                if (fC != null)
+                                    str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
+                                if (sC != null)
+                                    str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
+
+                                hasLowerFallback = hasLowerFallback || (fC?.LowerFallback ?? false) || (sC?.LowerFallback ?? false);
+                                hasUpperFallback = hasUpperFallback || (fC?.UpperFallback ?? false) || (sC?.UpperFallback ?? false);
+                                overallSuccess = true;
+                            }
+                        }
+                        
+                        if (overallSuccess)
+                            str += ". If this is desired, please set <restrictedReach> to the same value in XML to hide this warning.";
                     }
                     else
                     {
                         if (!tools.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
-                        {
-                            str += " is missing <ensureLinkedBodyPartsGroupAlwaysUsable>, meaning a damaged Pawn cannot reach all attack heights!!! Otherwise, fallback";
-                        }
+                            str += " lacks <ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>!!! Otherwise, fallback";
 
-                        str += " could not be set, even though it is missing! This means the pawn lacks attack tools with proper fallback, as well as any automatic fallback. ("
+                        str += " could not be set! ("
                             + string.Join(", ", tools.Select(x => x.ToString() + ": " + x.restrictedReach.ToString()))
                             + ").";
-                        Log.Error(str);
                     }
+                    __result = __result.Append(str);
                 }
             }
+        }
+
+        static bool FallbackHandling(IEnumerable<ToolCE> tools, bool hasLowerFallback, bool hasUpperFallback, out ToolCE firstChanged, out ToolCE secondChanged)
+        {
+            firstChanged = null;
+            secondChanged = null;
+
+            if (!tools.Any())
+                return false;
+
+            var limited = (!hasLowerFallback
+                            ? (!hasUpperFallback
+                                ? tools.Where(x => x.AttackPartHeight == BodyPartHeight.Top || x.AttackPartHeight == BodyPartHeight.Bottom)
+                                : tools.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom))
+                            : tools.Where(x => x.AttackPartHeight == BodyPartHeight.Top));
+            var singleNeed = (!hasLowerFallback
+                        ? (!hasUpperFallback
+                            ? MeleeFallback.Nearest
+                            : MeleeFallback.NearestBelow)
+                        : MeleeFallback.NearestAbove);
+            bool needOne = hasLowerFallback || hasUpperFallback;
+
+            if (tools.Count() == 1 || !limited.Any())     //Have to be all on Middle or Undefined
+            {
+                firstChanged = tools.First();
+                firstChanged.restrictedReach = singleNeed;
+            }
+            else if (needOne)
+            {
+                firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
+                firstChanged.restrictedReach = singleNeed;
+            }
+            else if (!limited.Any(x => x.AttackPartHeight == BodyPartHeight.Top) || !limited.Any(x => x.AttackPartHeight == BodyPartHeight.Bottom))  //There's only one of the needed two
+            {
+                firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
+                secondChanged = tools.Except(limited.First()).First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? any.Except(limited.First()).First();
+                                                                    //any.Count() is above 1, so there are others we could use
+                if (firstChanged.AttackPartHeight == BodyPartHeight.Top)
+                {
+                    firstChanged.restrictedReach = MeleeFallback.NearestAbove;
+                    secondChanged.restrictedReach = MeleeFallback.NearestBelow;
+                }
+                else
+                {
+                    firstChanged.restrictedReach = MeleeFallback.NearestBelow;
+                    secondChanged.restrictedReach = MeleeFallback.NearestAbove;
+                }
+            }
+            else    //There are multiple, and we need two (and limited has two)
+            {
+                var top = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Top);
+                var bottom = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom);
+                firstChanged = top.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? top.First();
+                firstChanged.restrictedReach = MeleeFallback.NearestAbove;
+                secondChanged = bottom.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? bottom.First();
+                secondChanged.restrictedReach = MeleeFallback.NearestBelow;
+            }
+
+            return firstChanged != null || secondChanged != null;
         }
     }
 }
