@@ -10,47 +10,87 @@ namespace CombatExtended
 {
     public class ToolCE : Tool
     {
+        ThingDef parentDef;
+        ThingDef ParentDef
+        {
+            get
+            {
+                if (parentDef == null)
+                {
+                    //var hediffDef = DefDatabase<HediffDef>.AllDefs.FirstOrDefault(x => x.HasComp(typeof(HediffComp_VerbGiver)) && (x.CompProps<HediffCompProperties_VerbGiver>().tools?.Contains(this) ?? false));
+                    //if (hediffDef != null)
+                    //    parentDef = hediffDef;
+                    parentDef = DefDatabase<ThingDef>.AllDefs.FirstOrDefault(x => x.tools?.Contains(this) ?? false);
+                }
+                return parentDef;
+            }
+        }
+
         public float armorPenetrationSharp;
         public float armorPenetrationBlunt;
         /// <summary>
         /// Absolute added vertical distance (in cells) beyond the attacker's arm length
         /// E.g a knife has reach near to 0, Mace probably ~0.2-0.3 for the head and ~0 for the pommel ...
         /// </summary>
-        public float reach;
-        public Gender restrictedGender = Gender.None;
-
-        /// <param name="attackerPawn">Pawn to check RaceProps.body of for linkedBodyPartsGroup</param>
-        /// <returns>BodyPartHeight of the attackers' bodypart capable of performing this tool's attack</returns>
-        public BodyPartHeight AttackPartHeight(Pawn attackerPawn)
+        float reach = -1;
+        public float Reach
         {
-            if (attackerPawn == null) return BodyPartHeight.Undefined;
-            if (linkedBodyPartsGroup == null) return BodyPartHeight.Middle;
-
-            // FIND THE BODYPART THAT HANLDES THIS TOOL
-            var part = attackerPawn.RaceProps.body.AllParts.FirstOrDefault(x => x.IsInGroup(linkedBodyPartsGroup));
-
-            if (part == null || part.IsCorePart) return BodyPartHeight.Middle;
-
-            // Find the height of the latest parent attached to the corepart (Torso)
-            // We use this form, because:
-            //     - Torso(Middle)-Legs(Bottom)
-            //     - Torso(Middle)-Shoulders-Arm-Hand-Finger(Bottom)
-            //     - Torso(Middle)-Neck(Top)
-            // You want to select Legs/Neck as Bottom/Top, but Finger (the only LeftHand BodyPartGroups) to be Middle even though it's assigned Bottom.
-            // Therefore: 
-            var prevPart = part;
-            var parent = part.parent;
-            while (!parent.IsCorePart)
+            get
             {
-                prevPart = parent;
-                parent = parent.parent;
-            }
+                if (reach == -1)
+                {
+                    //Races
+                    if (ParentDef == null || ParentDef.race != null)
+                        reach = 0;
 
-            //If the latest parent attached to the torso has a height defined, use that
-            if (prevPart.height != BodyPartHeight.Undefined)
-                return prevPart.height;
-            else
-                return BodyPartHeight.Middle;
+                    //Weapons
+                    bool isOneHanded = ParentDef.weaponTags?.Contains(Apparel_Shield.OneHandedTag) ?? false;
+                    //if (parentDef.HasComp(typeof(CompAmmoUser)))
+
+                    //Bulk is calculated from weapon length in the balance sheet (Bulk(L) = L(mm) / 100)
+                    //To revert back, L(m) = 0.1 * Bulk(L)
+                    //One-handed weapons add their full length, two-handed weapons add half of their length to reach
+                    reach = (isOneHanded ? 0.1f : 0.05f) * ParentDef.GetStatValueAbstract(CE_StatDefOf.Bulk);
+                }
+                return reach;
+            }
+        }
+        public Gender restrictedGender = Gender.None;
+        public MeleeFallback restrictedReach = MeleeFallback.Automatic;
+
+        bool partHeightFixed = false;
+        BodyPartHeight attackPartHeight = BodyPartHeight.Undefined;
+        /// <returns>BodyPartHeight of the attackers' bodypart capable of performing this tool's attack</returns>
+        public BodyPartHeight AttackPartHeight
+        {
+            get
+            {
+                if (!partHeightFixed)
+                {
+                    if (ParentDef != null)
+                    {
+                        if (ParentDef.race == null
+                            || linkedBodyPartsGroup == null)
+                        {
+                            attackPartHeight = BodyPartHeight.Middle;
+                        }
+                        else
+                            attackPartHeight = CollisionVertical.FromRecord(
+                                ParentDef.race.body.AllParts.FirstOrDefault(x => x.IsInGroup(linkedBodyPartsGroup)));
+
+                        partHeightFixed = true;
+                    }
+                }
+                return attackPartHeight;
+            }
+        }
+
+        public bool UpperFallback => restrictedReach == MeleeFallback.NearestAbove || restrictedReach == MeleeFallback.Nearest || restrictedReach == MeleeFallback.FullBody;
+        public bool LowerFallback => restrictedReach == MeleeFallback.NearestBelow || restrictedReach == MeleeFallback.Nearest || restrictedReach == MeleeFallback.FullBody;
+
+        public virtual void PostLoadCE(ThingDef parentDef)
+        {
+            this.parentDef = parentDef;
         }
     }
 }

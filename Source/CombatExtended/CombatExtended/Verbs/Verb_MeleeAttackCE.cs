@@ -55,8 +55,32 @@ namespace CombatExtended
         public float ArmorPenetrationSharp => (tool as ToolCE)?.armorPenetrationSharp * (EquipmentSource?.GetStatValue(CE_StatDefOf.MeleePenetrationFactor) ?? 1) ?? 0;
         public float ArmorPenetrationBlunt => (tool as ToolCE)?.armorPenetrationBlunt * (EquipmentSource?.GetStatValue(CE_StatDefOf.MeleePenetrationFactor) ?? 1) ?? 0;
 
-        public BodyPartHeight AttackPartHeight => (tool as ToolCE)?.AttackPartHeight(CasterPawn) ?? BodyPartHeight.Undefined;
-        public float Reach => (tool as ToolCE)?.reach ?? 0;
+        bool attackPartHeightFixed = false;
+        BodyPartHeight attackPartHeight = BodyPartHeight.Undefined;
+        public BodyPartHeight AttackPartHeight
+        {
+            get
+            {
+                if (!attackPartHeightFixed)
+                {
+                    if (HediffSource != null)
+                        //Implant (highly variable between pawns)
+                        attackPartHeight = CollisionVertical.FromRecord(HediffSource.Part);
+                    else
+                        //Non-implant ()
+                        attackPartHeight = (tool as ToolCE)?.AttackPartHeight ?? BodyPartHeight.Undefined;
+                }
+                return attackPartHeight;
+            }
+        }
+
+        public bool UpperFallback => (tool as ToolCE)?.UpperFallback ?? true;
+        public bool LowerFallback => (tool as ToolCE)?.LowerFallback ?? true;
+        public bool UndefinedFallback => (tool as ToolCE)?.restrictedReach == MeleeFallback.FullBody;
+        /// <summary>
+        /// Reach of the TOOL (added onto arm for total reach)
+        /// </summary>
+        public float Reach => (tool as ToolCE)?.Reach ?? 0;
         bool isCrit;
 
         #endregion
@@ -66,7 +90,7 @@ namespace CombatExtended
         public override bool CanHitTargetFrom(IntVec3 root, LocalTargetInfo targ)
         {
             // NEW FALSE: Check that attacker and target are the right height
-            if (!AttackerReach(root, targ, out var _))
+            if (!AttackerReach(root, targ, out var _, out bool _))
                 return false;
 
             return base.CanHitTargetFrom(root, targ);
@@ -215,7 +239,7 @@ namespace CombatExtended
                     defender.mindState.lastMeleeThreatHarmTick = Find.TickManager.TicksGame;
                 }
             }
-            casterPawn.rotationTracker.FaceCell(targetThing.Position);
+            casterPawn.rotationTracker?.FaceCell(targetThing.Position);
             if (casterPawn.caller != null)
             {
                 casterPawn.caller.Notify_DidMeleeAttack();
@@ -474,8 +498,9 @@ namespace CombatExtended
             }
         }
 
-        private bool AttackerReach(IntVec3 root, LocalTargetInfo target, out FloatRange range)
+        private bool AttackerReach(IntVec3 root, LocalTargetInfo target, out FloatRange range, out bool fallback)
         {
+            fallback = false;
             Pawn pawn = target.Thing as Pawn;
 
             if (CasterPawn == null)
@@ -494,6 +519,12 @@ namespace CombatExtended
 
             var casterVert = new CollisionVertical(CasterPawn, root);
             var attackRegion = AttackPartHeight;
+
+            if (pawn != null && AttackPartHeight == BodyPartHeight.Undefined)
+            {
+                range = new CollisionVertical(pawn).HeightRange;
+                return true;
+            }
 
             // ASSUMING CERTAIN VIABLE ARM MOVEMENTS
             //
@@ -518,14 +549,25 @@ namespace CombatExtended
             if (pawn != null)
             {
                 var targetHeight = new CollisionVertical(pawn).HeightRange;
-                range.min = Mathf.Max(range.min, targetHeight.min);
-                range.max = Mathf.Min(range.max, targetHeight.max);
+                var min = Mathf.Max(range.min, targetHeight.min);
+                var max = Mathf.Min(range.max, targetHeight.max);
 
-                if (range.min > range.max)
+                if (min > max)  //Need fallback
                 {
-                    range = new FloatRange(0, 0);
-                    return false;
+                    if (min == range.min && LowerFallback)  //Attacks downwards (enemy standing below a barricade)
+                        range = new FloatRange(max - 0.05f, max);
+                    else if (max == range.max && UpperFallback)  //Attacks upwards (enemy standing on a barricade)
+                        range = new FloatRange(min, min + 0.05f);
+                    else
+                    {
+                        range = new FloatRange(0, 0);
+                        return false;
+                    }
+
+                    fallback = true;
                 }
+                else
+                    range = new FloatRange(min, max);
             }
 
             return true;
@@ -539,7 +581,7 @@ namespace CombatExtended
         private BodyPartHeight GetBodyPartHeightFor(LocalTargetInfo target)
         {
             Pawn pawn = target.Thing as Pawn;
-            if (pawn == null || CasterPawn == null || !AttackerReach(target.Cell, target, out var reachRange))
+            if (pawn == null || CasterPawn == null || !AttackerReach(target.Cell, target, out var reachRange, out bool fallback) || (fallback && UndefinedFallback))
                 return BodyPartHeight.Undefined;
 
             var targetHeight = new CollisionVertical(pawn);

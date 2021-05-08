@@ -152,5 +152,35 @@ namespace CombatExtended
             var regionRange = RangeRegion(region);
             return (Mathf.Min(range.max, regionRange.max) - Mathf.Max(range.min, regionRange.min)) / regionRange.Span;
         }
+
+        public static BodyPartHeight FromRecord(BodyPartRecord record)
+        {
+            //var part = parentThingDef.race.body.AllParts.FirstOrDefault(x => x.IsInGroup(linkedBodyPartsGroup));
+
+            if (record == null || record.IsCorePart)
+                return BodyPartHeight.Middle;
+
+            // Find the height of the latest parent attached to the corepart (Torso)
+            // We use this form, because:
+            //     - Torso(Middle)-Legs(Bottom)
+            //     - Torso(Middle)-Shoulders-Arm-Hand-Finger(Bottom)
+            //     - Torso(Middle)-Neck(Top)
+            // You want to select Legs/Neck as Bottom/Top, but Finger (the only LeftHand BodyPartGroups) to be Middle even though it's assigned Bottom.
+            // Therefore: 
+            var prevPart = record;
+            var parent = record.parent;
+            while (!parent.IsCorePart)
+            {
+                prevPart = parent;
+                parent = parent.parent;
+            }
+
+            //If the latest parent attached to the torso has a height defined, use that
+            if (prevPart.height != BodyPartHeight.Undefined)
+                return prevPart.height;
+            else
+                return BodyPartHeight.Middle;
+
+        }
     }
 }

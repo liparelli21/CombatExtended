@@ -115,4 +115,124 @@ namespace CombatExtended.HarmonyCE
             }
         }
     }
+
+    [HarmonyPatch(typeof(ThingDef), "PostLoad")]
+    static class Harmony_ThingDef_PostLoad_Patch
+    {
+        [HarmonyPostfix]
+        public static void PostFix(ThingDef __instance)
+        {
+            if (__instance.tools != null)
+            {
+                var tools = __instance.tools.Where(x => x is ToolCE).Select(x => x as ToolCE);
+
+                foreach (var tool in tools)
+                    tool.PostLoadCE(__instance);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ThingDef), "ConfigErrors")]
+    static class Harmony_ThingDef_ConfigErrors_Patch
+    {
+        [HarmonyPostfix]
+        public static void PostFix(ThingDef __instance, ref IEnumerable<string> __result)
+        {
+            if (__instance.race != null && __instance.tools != null)
+            {
+                var tools = __instance.tools.Where(x => x is ToolCE).Select(x => x as ToolCE);
+
+                bool hasUpperFallback = tools.Any(x => x.UpperFallback);
+                bool hasLowerFallback = tools.Any(x => x.LowerFallback);
+
+                if (!hasLowerFallback || !hasUpperFallback)
+                {
+                    var any = tools.Where(x => x.restrictedReach == MeleeFallback.Automatic && x.ensureLinkedBodyPartsGroupAlwaysUsable);
+
+                    var str = __instance.ToString() + " :: " + (!hasLowerFallback ? (!hasUpperFallback ? "both" : "lower") : "upper") + " fallback";
+
+                    if (any.Any())
+                    {
+                        var limited = (!hasLowerFallback
+                            ? (!hasUpperFallback
+                                ? any.Where(x => x.AttackPartHeight == BodyPartHeight.Top || x.AttackPartHeight == BodyPartHeight.Bottom)
+                                : any.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom))
+                            : any.Where(x => x.AttackPartHeight == BodyPartHeight.Top));
+                        var singleNeed = (!hasLowerFallback
+                                    ? (!hasUpperFallback
+                                        ? MeleeFallback.Nearest
+                                        : MeleeFallback.NearestBelow)
+                                    : MeleeFallback.NearestAbove);
+                        bool needOne = hasLowerFallback || hasUpperFallback;
+
+                        ToolCE firstChanged = null;
+                        ToolCE secondChanged = null;
+
+                        if (any.Count() == 1 || !limited.Any())     //Have to be all on Middle or Undefined
+                        {
+                            firstChanged = any.First();
+                            firstChanged.restrictedReach = singleNeed;
+                        }
+                        else if (needOne)
+                        {
+                            firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
+                            firstChanged.restrictedReach = singleNeed;
+                        }
+                        else if (!limited.Any(x => x.AttackPartHeight == BodyPartHeight.Top) || !limited.Any(x => x.AttackPartHeight == BodyPartHeight.Bottom))  //There's only one of the needed two
+                        {
+                            firstChanged = limited.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? limited.First();
+                            secondChanged = any.Except(limited.First()).First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? any.Except(limited.First()).First();
+                            //any.Count() is above 1, so there are others we could use
+                            if (firstChanged.AttackPartHeight == BodyPartHeight.Top)
+                            {
+                                firstChanged.restrictedReach = MeleeFallback.NearestAbove;
+                                secondChanged.restrictedReach = MeleeFallback.NearestBelow;
+                            }
+                            else
+                            {
+                                firstChanged.restrictedReach = MeleeFallback.NearestBelow;
+                                secondChanged.restrictedReach = MeleeFallback.NearestAbove;
+                            }
+                        }
+                        else    //There are multiple, and we need two (and limited has two)
+                        {
+                            var top = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Top);
+                            var bottom = limited.Where(x => x.AttackPartHeight == BodyPartHeight.Bottom);
+                            firstChanged = top.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? top.First();
+                            firstChanged.restrictedReach = MeleeFallback.NearestAbove;
+                            secondChanged = bottom.First();// OrDefault(x => x.ensureLinkedBodyPartsGroupAlwaysUsable) ?? bottom.First();
+                            secondChanged.restrictedReach = MeleeFallback.NearestBelow;
+                        }
+
+                        str += " was set";
+                        if (firstChanged != null)
+                        {
+                            var firstName = firstChanged.ToString().NullOrEmpty() ? (firstChanged.linkedBodyPartsGroup?.ToString() ?? firstChanged.id) : firstChanged.ToString();
+                            str += " (" + firstName + "->" + firstChanged.restrictedReach + ")";
+                        }
+                        if (secondChanged != null)
+                        {
+                            var secondName = secondChanged.ToString().NullOrEmpty() ? (secondChanged.linkedBodyPartsGroup?.ToString() ?? secondChanged.id) : secondChanged.ToString();
+                            str += " (" + secondName + "->" + secondChanged.restrictedReach + ")";
+                        }
+                        str += ". If this is desired, please set <restrictedReach> to the same value in XML to hide this warning.";
+
+                        Log.Warning(str);
+                    }
+                    else
+                    {
+                        if (!tools.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
+                        {
+                            str += " is missing <ensureLinkedBodyPartsGroupAlwaysUsable>, meaning a damaged Pawn cannot reach all attack heights!!! Otherwise, fallback";
+                        }
+
+                        str += " could not be set, even though it is missing! This means the pawn lacks attack tools with proper fallback, as well as any automatic fallback. ("
+                            + string.Join(", ", tools.Select(x => x.ToString() + ": " + x.restrictedReach.ToString()))
+                            + ").";
+                        Log.Error(str);
+                    }
+                }
+            }
+        }
+    }
 }
