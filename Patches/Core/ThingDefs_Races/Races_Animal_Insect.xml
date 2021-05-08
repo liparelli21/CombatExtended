@@ -47,6 +47,7 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.250</armorPenetrationBlunt>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -116,6 +117,7 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.5</armorPenetrationBlunt>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -196,6 +198,7 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationSharp>40</armorPenetrationSharp>
 					<armorPenetrationBlunt>20</armorPenetrationBlunt>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>

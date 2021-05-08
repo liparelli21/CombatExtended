@@ -111,6 +111,7 @@
 					<armorPenetrationSharp>0</armorPenetrationSharp>
 					<armorPenetrationBlunt>15</armorPenetrationBlunt>
 					<alwaysTreatAsWeapon>true</alwaysTreatAsWeapon>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -218,6 +219,7 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
 					<armorPenetrationBlunt>1.875</armorPenetrationBlunt>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -262,6 +264,7 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
 					<armorPenetrationBlunt>0.625</armorPenetrationBlunt>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -310,6 +313,7 @@
 					<armorPenetrationSharp>0</armorPenetrationSharp>
 					<armorPenetrationBlunt>12</armorPenetrationBlunt>
 					<alwaysTreatAsWeapon>true</alwaysTreatAsWeapon>
+					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
