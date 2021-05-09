@@ -149,7 +149,6 @@ namespace CombatExtended.HarmonyCE
                 {
                     var any = tools.Where(x => x.restrictedReach == MeleeFallback.Automatic && x.ensureLinkedBodyPartsGroupAlwaysUsable);
 
-                    var str = (!hasLowerFallback ? (!hasUpperFallback ? "both" : "lower") : "upper") + " fallback";
 
                     if (!any.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
                     {
@@ -184,7 +183,6 @@ namespace CombatExtended.HarmonyCE
                             {
                                 tool.ensureLinkedBodyPartsGroupAlwaysUsable = true;
                                 addedELBPGAU = true;
-                                Log.Message(__instance.ToString() + ": no parts guaranteed to be present, disrupting melee ability on limb loss. " + part.LabelCap + " holds vitals but is non-vital. Tool " + tool.ToString() + " was set to ensureLinkedBodyPartsGroupAlwaysUsable = True.");
                             }
 
                         }
@@ -193,7 +191,7 @@ namespace CombatExtended.HarmonyCE
                         // pawn.RaceProps.IsFlesh ? pawnCapacityDef.lethalFlesh : pawnCapacityDef.lethalMechanoids
 
                         if (!addedELBPGAU)
-                            str += " lacks ensureLinkedBodyPartsGroupAlwaysUsable=True, and this could not be automatically set!!! Otherwise, fallback";
+                            __result = __result.Append("lacks ensureLinkedBodyPartsGroupAlwaysUsable=True, and this could not be automatically set!!!");
                     }
 
                     if (any.Any())
@@ -209,9 +207,6 @@ namespace CombatExtended.HarmonyCE
                             bool noneSuccess = FallbackHandling(any.Where(x => x.restrictedGender == Gender.None), hasLowerFallback, hasUpperFallback, out fC, out sC);
                             if (noneSuccess)
                             {
-                                str += " was set";
-                                if (fC != null)     str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
-                                if (sC != null)     str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
                                 overallSuccess = true;
                             }
                         }
@@ -222,10 +217,8 @@ namespace CombatExtended.HarmonyCE
                             bool maleSuccess = FallbackHandling(male, hasLowerFallback, hasUpperFallback, out fC, out sC);
                             if (maleSuccess)
                             {
-                                str += " was set";
                                 if (fC != null)
                                 {
-                                    str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
                                     if (fC.restrictedGender == Gender.None)
                                     {
                                         hasLowerFallback = hasLowerFallback || fC.LowerFallback;
@@ -234,7 +227,6 @@ namespace CombatExtended.HarmonyCE
                                 }
                                 if (sC != null)
                                 {
-                                    str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
                                     if (sC.restrictedGender == Gender.None)
                                     {
                                         hasLowerFallback = hasLowerFallback || sC.LowerFallback;
@@ -247,30 +239,23 @@ namespace CombatExtended.HarmonyCE
                             bool femaleSuccess = FallbackHandling(female, hasLowerFallback, hasUpperFallback, out fC, out sC);
                             if (femaleSuccess)
                             {
-                                if (!maleSuccess)
-                                    str += " was set";
 
-                                if (fC != null)
-                                    str += " (" + fC.ToString() + "->" + fC.restrictedReach + ")";
-                                if (sC != null)
-                                    str += " (" + sC.ToString() + "->" + sC.restrictedReach + ")";
 
                                 hasLowerFallback = hasLowerFallback || (fC?.LowerFallback ?? false) || (sC?.LowerFallback ?? false);
                                 hasUpperFallback = hasUpperFallback || (fC?.UpperFallback ?? false) || (sC?.UpperFallback ?? false);
                                 overallSuccess = true;
                             }
                         }
-                        
-                        if (overallSuccess)
-                            str += ". If this is desired, please set <restrictedReach> to the same value in XML to hide this warning.";
+
+                        if (!overallSuccess)
+                            __result = __result.Append("fallback could not be set! In <tools> please assign <restrictedReach> of one tool to Nearest or FullBody, or <restrictedReach> of one tool to NearestAbove and another to NearestBelow.");
+
+                        //if (overallSuccess) str += ". If this is desired, please set <restrictedReach> to the same value in XML to hide this warning.";
                     }
                     else
                     {
-                        str += " could not be set! ("
-                            + string.Join(", ", tools.Select(x => x.ToString() + ": " + x.restrictedReach.ToString()))
-                            + ").";
+                        __result = __result.Append("none of the tools contain ensureLinkedBodyPartsGroupAlwaysUsable! The pawn will be unable to melee when exposed to enough damage.");
                     }
-                    __result = __result.Append(str);
                 }
             }
         }
