@@ -95,6 +95,8 @@ namespace CombatExtended
         public virtual void PostLoadCE(ThingDef parentDef)
         {
             this.parentDef = parentDef;
+        }
+
         public override string ToString()
         {
             return restrictedGender.ToString() + ": " + (base.ToString().NullOrEmpty() ? (linkedBodyPartsGroup?.ToString() ?? "["+id+"]") : base.ToString());
