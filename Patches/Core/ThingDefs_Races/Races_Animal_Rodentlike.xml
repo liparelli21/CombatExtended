@@ -68,7 +68,7 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.125</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
+					
 				</li>
 			</tools>
 		</value>
@@ -156,7 +156,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.423</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -236,7 +235,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.423</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -323,7 +321,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.125</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -424,7 +421,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.125</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -550,7 +546,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.144</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -643,7 +638,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.125</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>

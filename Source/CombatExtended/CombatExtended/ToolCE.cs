@@ -11,7 +11,7 @@ namespace CombatExtended
     public class ToolCE : Tool
     {
         ThingDef parentDef;
-        ThingDef ParentDef
+        public ThingDef ParentDef
         {
             get
             {

@@ -47,7 +47,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.192</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -119,7 +118,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>2</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -182,7 +180,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<armorPenetrationBlunt>2</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>horns</label>
@@ -196,7 +193,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<armorPenetrationSharp>0.03</armorPenetrationSharp>
 					<armorPenetrationBlunt>2</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -299,7 +295,6 @@
 					<armorPenetrationBlunt>0.3</armorPenetrationBlunt>		
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -366,7 +361,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.284</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -429,7 +423,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationSharp>0.12</armorPenetrationSharp>					
 					<armorPenetrationBlunt>9</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -541,7 +534,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>2.42</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -614,7 +606,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.352</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -734,7 +725,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>2</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -845,7 +835,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>2</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -908,7 +897,6 @@
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>1.75</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>horns</label>
@@ -920,7 +908,6 @@
 					<restrictedGender>Male</restrictedGender>
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<armorPenetrationBlunt>1.75</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -1024,7 +1011,6 @@
 					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>0.125</armorPenetrationBlunt>
 					<armorPenetrationSharp>0</armorPenetrationSharp>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>
@@ -1134,7 +1120,6 @@
 					<cooldownTime>1.97</cooldownTime>
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<armorPenetrationBlunt>1.5</armorPenetrationBlunt>
-					<ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>
 				</li>
 			</tools>
 		</value>

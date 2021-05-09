@@ -153,10 +153,47 @@ namespace CombatExtended.HarmonyCE
 
                     if (!any.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
                     {
-                        //Get BodyPartDef holding BodyPartRecord
+                        bool addedELBPGAU = false;
+                        foreach (var tool in tools)
+                        {
+                            //Get BodyPartDef holding BodyPartRecord
+                            BodyPartRecord part = tool.ParentDef.race.body.AllParts.FirstOrDefault(x => x.IsInGroup(tool.linkedBodyPartsGroup));
+                            if (part == null || part.def.tags.Any(x => x.vital))
+                                continue;
+
+                            var allVitals = tool.ParentDef.race.body.AllParts
+                                .Where(x => x.def.tags.Any(y => y.vital) && x.coverageAbs > 0);
+
+                            //See if any vital parts would be damaged if this part were destroyed
+                            var vitalChildren = CollisionVertical.Children(part)
+                                .Where(x => x.def.tags.Any(y => y.vital) && x.coverageAbs > 0);
+
+                            bool containsVital = false;
+
+                            foreach (var vitalTag in vitalChildren.SelectMany(x => x.def.tags.Where(y => y.vital)))
+                            {
+                                if (allVitals.Count(x => x.def.tags.Contains(vitalTag))
+                                    == vitalChildren.Count(x => x.def.tags.Contains(vitalTag)))
+                                {
+                                    //ALL vital parts of a certain kind would be damaged if this part were destroyed
+                                    containsVital = true;
+                                }
+                            }
+
+                            if (containsVital)
+                            {
+                                tool.ensureLinkedBodyPartsGroupAlwaysUsable = true;
+                                addedELBPGAU = true;
+                                Log.Message(__instance.ToString() + ": no parts guaranteed to be present, disrupting melee ability on limb loss. " + part.LabelCap + " holds vitals but is non-vital. Tool " + tool.ToString() + " was set to ensureLinkedBodyPartsGroupAlwaysUsable = True.");
+                            }
+
+                        }
                         //Get PawnCapacityDef:
                         // Verse.Pawn_HealthTracker ShouldBeDeadFromRequiredCapacity()
                         // pawn.RaceProps.IsFlesh ? pawnCapacityDef.lethalFlesh : pawnCapacityDef.lethalMechanoids
+
+                        if (!addedELBPGAU)
+                            str += " lacks ensureLinkedBodyPartsGroupAlwaysUsable=True, and this could not be automatically set!!! Otherwise, fallback";
                     }
 
                     if (any.Any())
@@ -229,9 +266,6 @@ namespace CombatExtended.HarmonyCE
                     }
                     else
                     {
-                        if (!tools.Any(x => x.ensureLinkedBodyPartsGroupAlwaysUsable))
-                            str += " lacks <ensureLinkedBodyPartsGroupAlwaysUsable>True</ensureLinkedBodyPartsGroupAlwaysUsable>!!! Otherwise, fallback";
-
                         str += " could not be set! ("
                             + string.Join(", ", tools.Select(x => x.ToString() + ": " + x.restrictedReach.ToString()))
                             + ").";

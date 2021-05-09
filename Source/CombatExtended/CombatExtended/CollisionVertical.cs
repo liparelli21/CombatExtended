@@ -182,5 +182,19 @@ namespace CombatExtended
                 return BodyPartHeight.Middle;
 
         }
+
+        public static IEnumerable<BodyPartRecord> Children(BodyPartRecord record)
+        {
+            yield return record;
+            int i = 0;
+            while (i < record.parts.Count)
+            {
+                foreach (var child in Children(record.parts[i]))
+                {
+                    yield return child;
+                }
+                i++;
+            }
+        }
     }
 }
