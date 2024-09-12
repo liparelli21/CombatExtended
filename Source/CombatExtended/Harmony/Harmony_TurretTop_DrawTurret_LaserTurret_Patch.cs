@@ -10,7 +10,7 @@ using Verse;
 
 namespace CombatExtended.Lasers
 {
-    [HarmonyPatch(typeof(TurretTop), "DrawTurret", new Type[] { }), StaticConstructorOnStartup]
+    [HarmonyPatch(typeof(TurretTop), "DrawTurret"), StaticConstructorOnStartup]
     class Harmony_TuretTop_DrawTurret_LaserTurret_Patch
     {
         static FieldInfo parentTurretField;
@@ -22,10 +22,13 @@ namespace CombatExtended.Lasers
             curRotationIntField = typeof(TurretTop).GetField("curRotationInt", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
-        static bool Prefix(TurretTop __instance, float ___curRotationInt, Building_Turret ___parentTurret)
+        static bool Prefix(TurretTop __instance, float ___curRotationInt, Building_Turret ___parentTurret, Vector3 recoilDrawOffset, float recoilAngleOffset)
         {
             Building_LaserGunCE turret = ___parentTurret as Building_LaserGunCE;
-            if (turret == null) return true;
+            if (turret == null)
+            {
+                return true;
+            }
             float rotation = ___curRotationInt;
             if (turret.TargetCurrentlyAimingAt.HasThing)
             {
@@ -33,7 +36,10 @@ namespace CombatExtended.Lasers
             }
 
             IDrawnWeaponWithRotation gunRotation = turret.Gun as IDrawnWeaponWithRotation;
-            if (gunRotation != null) rotation += gunRotation.RotationOffset;
+            if (gunRotation != null)
+            {
+                rotation += gunRotation.RotationOffset;
+            }
 
             Material material = ___parentTurret.def.building.turretTopMat;
             SpinningLaserGunTurret spinningGun = turret.Gun as SpinningLaserGunTurret;

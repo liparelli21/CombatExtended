@@ -12,9 +12,9 @@ namespace CombatExtended
     {
         #region Constants
 
-        protected const float damageVariationMin = 0.5f;
-        protected const float damageVariationMax = 1.5f;
-        protected const float damageVariationPerSkillLevel = 0.025f;
+        public const float damageVariationMin = 0.5f;
+        public const float damageVariationMax = 1.5f;
+        public const float damageVariationPerSkillLevel = 0.025f;
 
         #endregion
 
@@ -40,21 +40,22 @@ namespace CombatExtended
             return damageVariationMax - (damageVariationPerSkillLevel * (20 - pawn.skills.GetSkill(SkillDefOf.Melee).Level));
         }
 
-        protected static bool ShouldUseSkillVariation(Pawn pawn, ref float unskilledReturnValue)
+        public static bool ShouldUseSkillVariation(Pawn pawn, ref float unskilledReturnValue)
         {
             if (pawn == null)       //Info windows for when weapon isn't equipped
             {
                 return false;
             }
-            if ((pawn?.skills?.GetSkill(SkillDefOf.Melee) ?? null) == null)     //Pawns that can equip weapons but don't use skill (mechanoids, custom races) 
-            {                                                                   //No damage variation applied (same as animals for unarmed damage)
+            if ((pawn?.skills?.GetSkill(SkillDefOf.Melee) ?? null) == null)     //Pawns that can equip weapons but don't use skill (mechanoids, custom races)
+            {
+                //No damage variation applied (same as animals for unarmed damage)
                 unskilledReturnValue = 1.0f;
                 return false;
             }
             return true;
         }
 
-        protected static float GetAdjustedDamage(ToolCE tool, Thing thingOwner)
+        public static float GetAdjustedDamage(ToolCE tool, Thing thingOwner)
         {
             return tool.AdjustedBaseMeleeDamageAmount(thingOwner, tool.capacities?.First()?.VerbsProperties?.First()?.meleeDamageDef);
         }

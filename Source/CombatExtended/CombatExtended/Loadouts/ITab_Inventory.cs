@@ -8,9 +8,11 @@ using UnityEngine;
 using Verse;
 using Verse.AI;
 using Verse.Sound;
+using CombatExtended.HarmonyCE;
 
 namespace CombatExtended
 {
+
     public class ITab_Inventory : ITab_Pawn_Gear
     {
         #region Fields
@@ -21,13 +23,19 @@ namespace CombatExtended
         private const float _thingLeftX = 36f;
         private const float _thingRowHeight = 28f;
         private const float _topPadding = 20f;
+        private static readonly CachedTexture _iconEditAttachments = new CachedTexture("UI/Icons/gear");
         private const float _standardLineHeight = 22f;
         private static readonly Color _highlightColor = new Color(0.5f, 0.5f, 0.5f, 1f);
         private Vector2 _scrollPosition = Vector2.zero;
+        private Dictionary<BodyPartRecord, float> sharpArmorCache = new Dictionary<BodyPartRecord, float>();
+        private Dictionary<BodyPartRecord, float> bluntArmorCache = new Dictionary<BodyPartRecord, float>();
+        private Dictionary<BodyPartRecord, float> heatArmorCache = new Dictionary<BodyPartRecord, float>();
+        private int lastArmorTooltipTick = 0;
+        private Pawn lastArmorTooltipPawn = null;
 
         private float _scrollViewHeight;
 
-        private static List<Thing> workingInvList = new List<Thing>();
+        //private static List<Thing> workingInvList = new List<Thing>();
 
         #endregion Fields
 
@@ -43,45 +51,45 @@ namespace CombatExtended
 
         #region Properties
 
-        private bool CanControl
-        {
-            get
-            {
-                Pawn selPawnForGear = this.SelPawnForGear;
-                return !selPawnForGear.Downed && !selPawnForGear.InMentalState && (selPawnForGear.Faction == Faction.OfPlayer || selPawnForGear.IsPrisonerOfColony) && (!selPawnForGear.IsPrisonerOfColony || !selPawnForGear.Spawned || selPawnForGear.Map.mapPawns.AnyFreeColonistSpawned) && (!selPawnForGear.IsPrisonerOfColony || (!PrisonBreakUtility.IsPrisonBreaking(selPawnForGear) && (selPawnForGear.CurJob == null || !selPawnForGear.CurJob.exitMapOnArrival)));
-            }
-        }
+        //private bool CanControl
+        //{
+        //    get
+        //    {
+        //        Pawn selPawnForGear = this.SelPawnForGear;
+        //        return !selPawnForGear.Downed && !selPawnForGear.InMentalState && (selPawnForGear.Faction == Faction.OfPlayer || selPawnForGear.IsPrisonerOfColony) && (!selPawnForGear.IsPrisonerOfColony || !selPawnForGear.Spawned || selPawnForGear.Map.mapPawns.AnyFreeColonistSpawned) && (!selPawnForGear.IsPrisonerOfColony || (!PrisonBreakUtility.IsPrisonBreaking(selPawnForGear) && (selPawnForGear.CurJob == null || !selPawnForGear.CurJob.exitMapOnArrival)));
+        //    }
+        //}
 
-        private bool CanControlColonist
-        {
-            get
-            {
-                return this.CanControl && this.SelPawnForGear.IsColonistPlayerControlled;
-            }
-        }
+        //private bool CanControlColonist
+        //{
+        //    get
+        //    {
+        //        return this.CanControl && this.SelPawnForGear.IsColonistPlayerControlled;
+        //    }
+        //}
 
-        private Pawn SelPawnForGear
-        {
-            get
-            {
-                if (SelPawn != null)
-                {
-                    return SelPawn;
-                }
-                Corpse corpse = SelThing as Corpse;
-                if (corpse != null)
-                {
-                    return corpse.InnerPawn;
-                }
-                throw new InvalidOperationException("Gear tab on non-pawn non-corpse " + SelThing);
-            }
-        }
+        //private Pawn SelPawnForGear
+        //{
+        //    get
+        //    {
+        //        if (SelPawn != null)
+        //        {
+        //            return SelPawn;
+        //        }
+        //        Corpse corpse = SelThing as Corpse;
+        //        if (corpse != null)
+        //        {
+        //            return corpse.InnerPawn;
+        //        }
+        //        throw new InvalidOperationException("Gear tab on non-pawn non-corpse " + SelThing);
+        //    }
+        //}
 
         #endregion Properties
 
         #region Methods
 
-        protected override void FillTab()
+        public override void FillTab()
         {
             // get the inventory comp
             CompInventory comp = SelPawn.TryGetComp<CompInventory>();
@@ -131,19 +139,71 @@ namespace CombatExtended
             Widgets.BeginScrollView(outRect, ref _scrollPosition, viewRect);
             float num = 0f;
             TryDrawComfyTemperatureRange(ref num, viewRect.width);
-            if (ShouldShowOverallArmor(SelPawnForGear))
+            if (ShouldShowOverallArmorCE(SelPawnForGear))
             {
                 Widgets.ListSeparator(ref num, viewRect.width, "OverallArmor".Translate());
-                TryDrawOverallArmor(ref num, viewRect.width, StatDefOf.ArmorRating_Blunt, "ArmorBlunt".Translate(), " " + "CE_MPa".Translate());
-                TryDrawOverallArmor(ref num, viewRect.width, StatDefOf.ArmorRating_Sharp, "ArmorSharp".Translate(), "CE_mmRHA".Translate());
-                TryDrawOverallArmor(ref num, viewRect.width, StatDefOf.ArmorRating_Heat, "ArmorHeat".Translate(), "%");
+                int thisTick = Find.TickManager.TicksAbs;
+                if (SelPawnForGear != lastArmorTooltipPawn || lastArmorTooltipTick != thisTick)
+                {
+                    RebuildArmorCache(sharpArmorCache, StatDefOf.ArmorRating_Sharp);
+                    RebuildArmorCache(bluntArmorCache, StatDefOf.ArmorRating_Blunt);
+                    RebuildArmorCache(heatArmorCache, StatDefOf.ArmorRating_Heat);
+                    lastArmorTooltipPawn = SelPawnForGear;
+                    lastArmorTooltipTick = thisTick;
+                }
+
+                TryDrawOverallArmor(bluntArmorCache, ref num, viewRect.width, StatDefOf.ArmorRating_Blunt, "ArmorBlunt".Translate(), " " + "CE_MPa".Translate());
+                TryDrawOverallArmor(sharpArmorCache, ref num, viewRect.width, StatDefOf.ArmorRating_Sharp, "ArmorSharp".Translate(), "CE_mmRHA".Translate());
+                TryDrawOverallArmor(heatArmorCache, ref num, viewRect.width, StatDefOf.ArmorRating_Heat, "ArmorHeat".Translate(), "%");
             }
             if (ShouldShowEquipment(SelPawnForGear))
             {
+                // get the loadout so we can make a decision to show a button.
+                bool showMakeLoadout = false;
+                Loadout curLoadout = SelPawnForGear.GetLoadout();
+                if (SelPawnForGear.IsColonist && (curLoadout == null || curLoadout.Slots.NullOrEmpty()) && (SelPawnForGear.inventory.innerContainer.Any() || SelPawnForGear.equipment?.Primary != null))
+                {
+                    showMakeLoadout = true;
+                }
+
+                if (showMakeLoadout)
+                {
+                    num += 3;    // Make a little room for the button.
+                }
+
+                float buttonY = num; // Could be accomplished with seperator being after the button...
+
                 Widgets.ListSeparator(ref num, viewRect.width, "Equipment".Translate());
                 foreach (ThingWithComps current in SelPawnForGear.equipment.AllEquipmentListForReading)
                 {
-                    DrawThingRow(ref num, viewRect.width, current);
+                    DrawThingRowCE(ref num, viewRect.width, current);
+                }
+
+                // only offer this button if the pawn has no loadout or has the default loadout and there are things/equipment...
+                if (showMakeLoadout)
+                {
+                    Rect loadoutButtonRect = new Rect(viewRect.width / 2, buttonY, viewRect.width / 2, 26f); // button is half the available width...
+                    // Backup GUI color
+                    Color color = GUI.color;
+                    TextAnchor anchor = Text.Anchor;
+
+                    // Highlight if mouse over
+                    GUI.color = Color.cyan;
+                    if (Mouse.IsOver(loadoutButtonRect))
+                    {
+                        GUI.color = Color.white;
+                    }
+
+                    Text.Anchor = TextAnchor.UpperRight;
+                    Widgets.Label(loadoutButtonRect, "CE_MakeLoadout".Translate());
+
+                    if (Widgets.ButtonInvisible(loadoutButtonRect.ContractedBy(2), doMouseoverSound: true))
+                    {
+                        SyncedAddLoadout(SelPawnForGear);
+                    }
+                    // Restore GUI color
+                    Text.Anchor = anchor;
+                    GUI.color = color;
                 }
             }
             if (ShouldShowApparel(SelPawnForGear))
@@ -153,44 +213,18 @@ namespace CombatExtended
                                              orderby ap.def.apparel.bodyPartGroups[0].listOrder descending
                                              select ap)
                 {
-                    DrawThingRow(ref num, viewRect.width, current2);
+                    DrawThingRowCE(ref num, viewRect.width, current2);
                 }
             }
             if (ShouldShowInventory(SelPawnForGear))
             {
-                // get the loadout so we can make a decision to show a button.
-                bool showMakeLoadout = false;
-                Loadout curLoadout = SelPawnForGear.GetLoadout();
-                if (SelPawnForGear.IsColonist && (curLoadout == null || curLoadout.Slots.NullOrEmpty()) && (SelPawnForGear.inventory.innerContainer.Any() || SelPawnForGear.equipment?.Primary != null))
-                    showMakeLoadout = true;
-
-                if (showMakeLoadout) num += 3; // Make a little room for the button.
-
-                float buttonY = num; // Could be accomplished with seperator being after the button...
-
                 Widgets.ListSeparator(ref num, viewRect.width, "Inventory".Translate());
-
-                // only offer this button if the pawn has no loadout or has the default loadout and there are things/equipment...
-                if (showMakeLoadout)
-                {
-                    Rect loadoutButtonRect = new Rect(viewRect.width / 2, buttonY, viewRect.width / 2, 26f); // button is half the available width...
-                    if (Widgets.ButtonText(loadoutButtonRect, "CE_MakeLoadout".Translate()))
-                    {
-                        Loadout loadout = SelPawnForGear.GenerateLoadoutFromPawn();
-                        LoadoutManager.AddLoadout(loadout);
-                        SelPawnForGear.SetLoadout(loadout);
-
-                        // Opening this window is the same way as if from the assign tab so should be correct.
-                        Find.WindowStack.Add(new Dialog_ManageLoadouts(SelPawnForGear.GetLoadout()));
-
-                    }
-                }
 
                 workingInvList.Clear();
                 workingInvList.AddRange(SelPawnForGear.inventory.innerContainer);
                 for (int i = 0; i < workingInvList.Count; i++)
                 {
-                    DrawThingRow(ref num, viewRect.width, workingInvList[i].GetInnerIfMinified(), true);
+                    DrawThingRowCE(ref num, viewRect.width, workingInvList[i], true);
                 }
             }
             if (Event.current.type == EventType.Layout)
@@ -203,13 +237,13 @@ namespace CombatExtended
             Text.Anchor = TextAnchor.UpperLeft;
         }
 
-        private void DrawThingRow(ref float y, float width, Thing thing, bool showDropButtonIfPrisoner = false)
+        public void DrawThingRowCE(ref float y, float width, Thing thing, bool showDropButtonIfPrisoner = false)
         {
 
             Rect rect = new Rect(0f, y, width, _thingRowHeight);
-            Widgets.InfoCardButton(rect.width - 24f, y, thing);
+            Widgets.InfoCardButton(rect.width - 24f, y, thing.GetInnerIfMinified());
             rect.width -= 24f;
-            if (CanControl || (SelPawnForGear.Faction == Faction.OfPlayer && SelPawnForGear.RaceProps.packAnimal) || (showDropButtonIfPrisoner && SelPawnForGear.IsPrisonerOfColony))
+            if ((CanControl || (SelPawnForGear.Faction == Faction.OfPlayer && SelPawnForGear.RaceProps.packAnimal) || (showDropButtonIfPrisoner && SelPawnForGear.IsPrisonerOfColony)) && !SelPawnForGear.IsItemMechanoidWeapon(thing))
             {
                 var dropForbidden = SelPawnForGear.IsItemQuestLocked(thing);
                 Color color = dropForbidden ? Color.grey : Color.white;
@@ -219,21 +253,36 @@ namespace CombatExtended
                 if (Widgets.ButtonImage(dropRect, TexButton.Drop, color, mouseoverColor) && !dropForbidden)
                 {
                     SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                    InterfaceDrop(thing);
+                    SyncedInterfaceDrop(thing);
                 }
                 rect.width -= 24f;
             }
             if (CanControlColonist)
             {
-                if ((thing.def.IsNutritionGivingIngestible || thing.def.IsNonMedicalDrug) && thing.IngestibleNow && base.SelPawn.WillEat(thing, null) && (!SelPawnForGear.IsTeetotaler() || !thing.def.IsNonMedicalDrug))
+                if (FoodUtility.WillIngestFromInventoryNow(base.SelPawn, thing))
                 {
                     Rect rect3 = new Rect(rect.width - 24f, y, 24f, 24f);
                     TooltipHandler.TipRegion(rect3, "ConsumeThing".Translate(thing.LabelNoCount, thing));
                     if (Widgets.ButtonImage(rect3, TexButton.Ingest))
                     {
                         SoundDefOf.Tick_High.PlayOneShotOnCamera(null);
-                        InterfaceIngest(thing);
+                        SyncedInterfaceIngest(thing);
                     }
+                    rect.width -= 24f;
+                }
+            }
+            if (thing == SelPawn.equipment?.Primary && thing is WeaponPlatform platform)
+            {
+                Rect rect3 = new Rect(rect.width - 24f, y, 24f, 24f);
+                TooltipHandler.TipRegion(rect3, "CE_EditWeapon".Translate());
+                if (Widgets.ButtonImage(rect3, _iconEditAttachments.Texture))
+                {
+                    SoundDefOf.Tick_High.PlayOneShotOnCamera(null);
+                    if (!Find.WindowStack.IsOpen<Window_AttachmentsEditor>())
+                    {
+                        Find.WindowStack.Add(new Window_AttachmentsEditor(platform));
+                    }
+                    this.CloseTab();
                 }
                 rect.width -= 24f;
             }
@@ -246,17 +295,23 @@ namespace CombatExtended
                 GUI.color = _highlightColor;
                 GUI.DrawTexture(rect, TexUI.HighlightTex);
             }
-
             if (thing.def.DrawMatSingle != null && thing.def.DrawMatSingle.mainTexture != null)
             {
-                Widgets.ThingIcon(new Rect(4f, y, _thingIconSize, _thingIconSize), thing, 1f);
+                if (thing is WeaponPlatform weapon)
+                {
+                    RocketGUI.GUIUtility.DrawWeaponWithAttachments(new Rect(4f, y, _thingIconSize, _thingIconSize), weapon);
+                }
+                else
+                {
+                    Widgets.ThingIcon(new Rect(4f, y, _thingIconSize, _thingIconSize), thing, 1f);
+                }
             }
             Text.Anchor = TextAnchor.MiddleLeft;
             GUI.color = ThingLabelColor;
             Rect thingLabelRect = new Rect(_thingLeftX, y, rect.width - _thingLeftX, _thingRowHeight);
             string thingLabel = thing.LabelCap;
             if ((thing is Apparel && SelPawnForGear.outfits != null && SelPawnForGear.outfits.forcedHandler.IsForced((Apparel)thing))
-                || (SelPawnForGear.inventory != null && SelPawnForGear.HoldTrackerIsHeld(thing)))
+                    || (SelPawnForGear.inventory != null && SelPawnForGear.HoldTrackerIsHeld(thing)))
             {
                 thingLabel = thingLabel + ", " + "ApparelForcedLower".Translate();
             }
@@ -321,10 +376,7 @@ namespace CombatExtended
                             else if (SelPawnForGear.equipment.AllEquipmentListForReading.Contains(eq) && SelPawnForGear.inventory != null)
                             {
                                 equipOption = new FloatMenuOption("CE_PutAway".Translate(eqLabel),
-                                    new Action(delegate
-                                    {
-                                        SelPawnForGear.equipment.TryTransferEquipmentToContainer(SelPawnForGear.equipment.Primary, SelPawnForGear.inventory.innerContainer);
-                                    }));
+                                                                  () => SyncedTryTransferEquipmentToContainer(SelPawnForGear));
                             }
                             else if (!SelPawnForGear.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation))
                             {
@@ -341,10 +393,7 @@ namespace CombatExtended
                                     equipOptionLabel,
                                     (SelPawnForGear.story != null && SelPawnForGear.WorkTagIsDisabled(WorkTags.Violent))
                                     ? null
-                                    : new Action(delegate
-                                    {
-                                        compInventory.TrySwitchToWeapon(eq);
-                                    }));
+                                    : new Action(() => SyncedTrySwitchToWeapon(compInventory, eq)));
                             }
                             floatOptionList.Add(equipOption);
                         }
@@ -353,21 +402,21 @@ namespace CombatExtended
                     var worn_apparel = SelPawnForGear?.apparel?.WornApparel;
                     foreach (var apparel in worn_apparel)
                     {
-                        var compReloadable = apparel.TryGetComp<CompReloadable>();
+                        var compReloadable = apparel.TryGetComp<CompApparelReloadable>();
                         if (compReloadable != null && compReloadable.AmmoDef == thing.def && compReloadable.NeedsReload(true))
                         {
                             if (!SelPawnForGear.Drafted)    //TODO-1.2 This should be doable for drafted pawns as well, but the job does nothing. Figure out what's wrong and remove this condition.
                             {
                                 FloatMenuOption reloadApparelOption = new FloatMenuOption(
-                                "CE_ReloadApparel".Translate(apparel.Label, thing.Label),
-                                new Action(delegate
+                                    "CE_ReloadApparel".Translate(apparel.Label, thing.Label),
+                                    new Action(delegate
                                 {
                                     //var reloadJob = JobMaker.MakeJob(JobDefOf.Reload, apparel, thing);
                                     //SelPawnForGear.jobs.StartJob(reloadJob, JobCondition.InterruptForced, null, SelPawnForGear.CurJob?.def != reloadJob.def, true);
 
-                                    SelPawnForGear.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Reload, apparel, thing));
+                                    SyncedReloadApparel(SelPawnForGear, apparel, thing);
                                 })
-                            );
+                                );
                                 floatOptionList.Add(reloadApparelOption);
                             }
 
@@ -379,16 +428,51 @@ namespace CombatExtended
                         Action eatFood = delegate
                         {
                             SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                            InterfaceIngest(thing);
+                            SyncedInterfaceIngest(thing);
                         };
+
                         string label = thing.def.ingestible.ingestCommandString.NullOrEmpty() ? (string)"ConsumeThing".Translate(thing.LabelShort, thing) : string.Format(thing.def.ingestible.ingestCommandString, thing.LabelShort);
-                        if (SelPawnForGear.IsTeetotaler() && thing.def.IsNonMedicalDrug)
+                        // Display a warning if the food will lower pawn's mood
+                        if (FoodUtility.MoodFromIngesting(SelPawnForGear, thing, thing.def) < 0)
                         {
-                            floatOptionList.Add(new FloatMenuOption(label + ": " + TraitDefOf.DrugDesire.degreeDatas.Where(x => x.degree == -1).First()?.label, null));
+                            label = $"{label}: ({"WarningFoodDisliked".Translate()})";
                         }
-                        else
+
+                        FloatMenuOption floatMenuOption = null;
+
+                        // Handle drug related ideology stuff
+                        if (ModsConfig.IdeologyActive && thing.def.IsDrug)
                         {
-                            floatOptionList.Add(new FloatMenuOption(label, eatFood));
+                            if (!new HistoryEvent(HistoryEventDefOf.IngestedDrug, SelPawnForGear.Named(HistoryEventArgsNames.Doer)).Notify_PawnAboutToDo(out floatMenuOption, label) && !PawnUtility.CanTakeDrugForDependency(SelPawnForGear, thing.def))
+                            {
+                                floatOptionList.Add(floatMenuOption);
+                            }
+                            else if (thing.def.ingestible.drugCategory == DrugCategory.Medical && !new HistoryEvent(HistoryEventDefOf.IngestedRecreationalDrug, SelPawnForGear.Named(HistoryEventArgsNames.Doer)).Notify_PawnAboutToDo(out floatMenuOption, label) && !PawnUtility.CanTakeDrugForDependency(SelPawnForGear, thing.def))
+                            {
+                                floatOptionList.Add(floatMenuOption);
+                            }
+                            else if (thing.def.ingestible.drugCategory == DrugCategory.Hard && !new HistoryEvent(HistoryEventDefOf.IngestedHardDrug, SelPawnForGear.Named(HistoryEventArgsNames.Doer)).Notify_PawnAboutToDo(out floatMenuOption, label))
+                            {
+                                floatOptionList.Add(floatMenuOption);
+                            }
+                        }
+
+                        if (floatMenuOption == null)
+                        {
+                            // Handle teetotaler trait with drugs, considering dependency genes
+                            if (thing.def.IsNonMedicalDrug && !SelPawnForGear.CanTakeDrug(thing.def))
+                            {
+                                floatOptionList.Add(new FloatMenuOption(label + ": " + TraitDefOf.DrugDesire.DataAtDegree(-1).GetLabelCapFor(SelPawnForGear), null));
+                            }
+                            // Royal traits and inappropriate food, always allowed if pawn is starving, ascetic, or will gain joy from ingesting
+                            else if (FoodUtility.InappropriateForTitle(thing.def, SelPawnForGear, true))
+                            {
+                                floatOptionList.Add(new FloatMenuOption(label + ": " + "FoodBelowTitleRequirements".Translate(SelPawnForGear.royalty.MostSeniorTitle.def.GetLabelFor(SelPawnForGear).CapitalizeFirst()).CapitalizeFirst(), null));
+                            }
+                            else
+                            {
+                                floatOptionList.Add(new FloatMenuOption(label, eatFood));
+                            }
                         }
                     }
                     // Drop, and drop&haul options
@@ -397,17 +481,18 @@ namespace CombatExtended
                         floatOptionList.Add(new FloatMenuOption("CE_CannotDropThing".Translate() + ": " + "DropThingLocked".Translate(), null));
                         floatOptionList.Add(new FloatMenuOption("CE_CannotDropThingHaul".Translate() + ": " + "DropThingLocked".Translate(), null));
                     }
-                    else
+                    // Don't display drop option for mechanoids
+                    else if (!SelPawnForGear.IsItemMechanoidWeapon(eq))
                     {
                         floatOptionList.Add(new FloatMenuOption("DropThing".Translate(), new Action(delegate
                         {
                             SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                            InterfaceDrop(thing);
+                            SyncedInterfaceDrop(thing);
                         })));
                         floatOptionList.Add(new FloatMenuOption("CE_DropThingHaul".Translate(), new Action(delegate
                         {
                             SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                            InterfaceDropHaul(thing);
+                            SyncedInterfaceDropHaul(thing);
                         })));
                     }
                     // Stop holding in inventory option
@@ -416,7 +501,7 @@ namespace CombatExtended
                         Action forgetHoldTracker = delegate
                         {
                             SoundDefOf.Tick_High.PlayOneShotOnCamera();
-                            SelPawnForGear.HoldTrackerForget(thing);
+                            SyncedHoldTrackerForget(SelPawnForGear, thing);
                         };
                         floatOptionList.Add(new FloatMenuOption("CE_HoldTrackerForget".Translate(), forgetHoldTracker));
                     }
@@ -428,95 +513,72 @@ namespace CombatExtended
         }
 
         // RimWorld.ITab_Pawn_Gear
-        private void TryDrawOverallArmor(ref float curY, float width, StatDef stat, string label, string unit)
+        private void RebuildArmorCache(Dictionary<BodyPartRecord, float> armorCache, StatDef stat)
         {
+            armorCache.Clear();
             float naturalArmor = SelPawnForGear.GetStatValue(stat);
-            float averageArmor = naturalArmor;
             List<Apparel> wornApparel = SelPawnForGear.apparel?.WornApparel;
-            foreach (Apparel apparel in wornApparel ?? Enumerable.Empty<Apparel>())
+            var shield = wornApparel.FirstOrDefault(x => x is Apparel_Shield);
+            foreach (BodyPartRecord part in SelPawnForGear.RaceProps.body.AllParts)
             {
-                averageArmor += apparel.GetStatValue(stat, true) * apparel.def.apparel.HumanBodyCoverage;
-            }
-            if (averageArmor > 0.0001f)
-            {
-                Rect rect = new Rect(0f, curY, width, _standardLineHeight);
-                string text = "";
-                foreach (BodyPartRecord bodyPart in SelPawnForGear.RaceProps.body.AllParts)
+                //TODO: 1.5 should be Neck
+                if (part.depth == BodyPartDepth.Outside && (part.coverage >= 0.1 || (part.def == CE_BodyPartDefOf.Neck || part.def == CE_BodyPartDefOf.Neck)))
                 {
-                    BodyPartRecord part = bodyPart;
-                    float armorValue = bodyPart.IsInGroup(CE_BodyPartGroupDefOf.CoveredByNaturalArmor) ? naturalArmor : 0f;
-                    if (part.depth == BodyPartDepth.Outside && (part.coverage >= 0.1 || (part.def == BodyPartDefOf.Eye || part.def == BodyPartDefOf.Neck)))
+                    float armorValue = part.IsInGroup(CE_BodyPartGroupDefOf.CoveredByNaturalArmor) ? naturalArmor : 0f;
+                    if (wornApparel != null)
                     {
-                        text += part.LabelCap + ": ";
-                        foreach (Apparel apparel in wornApparel ?? Enumerable.Empty<Apparel>())
+                        foreach (var apparel in wornApparel)
                         {
                             if (apparel.def.apparel.CoversBodyPart(part))
                             {
-                                armorValue += apparel.GetStatValue(stat, true);
+                                armorValue += apparel.PartialStat(stat, part);
                             }
                         }
-                        text += formatArmorValue(armorValue, unit) + "\n";
                     }
+                    if (shield != null)
+                    {
+                        var shieldCoverage = shield.def?.GetModExtension<ShieldDefExtension>()?.PartIsCoveredByShield(part, SelPawnForGear);
+                        if (shieldCoverage == true)
+                        {
+                            armorValue += shield.GetStatValue(stat);
+                        }
+                    }
+                    armorCache[part] = armorValue;
                 }
-                TooltipHandler.TipRegion(rect, text);
-
-                Widgets.Label(rect, label.Truncate(200f, null));
-                rect.xMin += 200;
-                Widgets.Label(rect, formatArmorValue(averageArmor, unit));
-                curY += _standardLineHeight;
             }
         }
 
-        // RimWorld.ITab_Pawn_Gear
-        private void TryDrawComfyTemperatureRange(ref float curY, float width)
+        private void TryDrawOverallArmor(Dictionary<BodyPartRecord, float> armorCache, ref float curY, float width, StatDef stat, string label, string unit)
         {
-            if (SelPawnForGear.Dead)
-            {
-                return;
-            }
             Rect rect = new Rect(0f, curY, width, _standardLineHeight);
-            float statValue = SelPawnForGear.GetStatValue(StatDefOf.ComfyTemperatureMin, true);
-            float statValue2 = SelPawnForGear.GetStatValue(StatDefOf.ComfyTemperatureMax, true);
-            Widgets.Label(rect, string.Concat(new string[]
+            string text = "";
+            float averageArmor = 0;
+            float bodyCoverage = 0;
+            foreach (var bodyPartValue in armorCache)
             {
-                "ComfyTemperatureRange".Translate(),
-                ": ",
-                statValue.ToStringTemperature("F0"),
-                " ~ ",
-                statValue2.ToStringTemperature("F0")
-            }));
-            curY += _standardLineHeight;
-        }
+                BodyPartRecord part = bodyPartValue.Key;
+                float armorValue = bodyPartValue.Value;
+                averageArmor += armorValue * part.coverage;
+                bodyCoverage += part.coverage;
+                text += part.LabelCap + ": ";
+                text += formatArmorValue(armorValue, unit) + "\n";
+            }
+            averageArmor /= bodyCoverage;
 
-        // RimWorld.ITab_Pawn_Gear
-        private void InterfaceDrop(Thing t)
-        {
-            if (SelPawnForGear.HoldTrackerIsHeld(t))
-                SelPawnForGear.HoldTrackerForget(t);
-            ThingWithComps thingWithComps = t as ThingWithComps;
-            Apparel apparel = t as Apparel;
-            if (apparel != null && SelPawnForGear.apparel != null && SelPawnForGear.apparel.WornApparel.Contains(apparel))
-            {
-                SelPawnForGear.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.RemoveApparel, apparel));
-            }
-            else if (thingWithComps != null && SelPawnForGear.equipment != null && SelPawnForGear.equipment.AllEquipmentListForReading.Contains(thingWithComps))
-            {
-                SelPawnForGear.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.DropEquipment, thingWithComps));
-            }
-            else if (!t.def.destroyOnDrop)
-            {
-                Thing thing;
-                Thing dropThing = t;
-                if (t.def.Minifiable)
-                    dropThing = SelPawnForGear.inventory.innerContainer.FirstOrDefault(x => x.GetInnerIfMinified().ThingID == t.ThingID);
-                SelPawnForGear.inventory.innerContainer.TryDrop(dropThing, SelPawnForGear.Position, SelPawnForGear.Map, ThingPlaceMode.Near, out thing, null);
-            }
+            TooltipHandler.TipRegion(rect, text);
+
+            Widgets.Label(rect, label.Truncate(200f, null));
+            rect.xMin += 200;
+            Widgets.Label(rect, formatArmorValue(averageArmor, unit));
+            curY += _standardLineHeight;
         }
 
         private void InterfaceDropHaul(Thing t)
         {
             if (SelPawnForGear.HoldTrackerIsHeld(t))
+            {
                 SelPawnForGear.HoldTrackerForget(t);
+            }
             ThingWithComps thingWithComps = t as ThingWithComps;
             Apparel apparel = t as Apparel;
             if (apparel != null && SelPawnForGear.apparel != null && SelPawnForGear.apparel.WornApparel.Contains(apparel))
@@ -536,7 +598,13 @@ namespace CombatExtended
             }
         }
 
-        private void InterfaceIngest(Thing t)
+        [Compatibility.Multiplayer.SyncMethod(syncContext = 2)] // 2 is map selected
+        private void SyncedInterfaceIngest(Thing t) => InterfaceIngest(t);
+
+        [Compatibility.Multiplayer.SyncMethod(syncContext = 2)]
+        private void SyncedInterfaceDropHaul(Thing t) => InterfaceDropHaul(t);
+
+        private new void InterfaceIngest(Thing t)
         {
             Job job = JobMaker.MakeJob(JobDefOf.Ingest, t);
             job.count = Mathf.Min(t.stackCount, t.def.ingestible.maxNumToIngestAtOnce);
@@ -544,22 +612,7 @@ namespace CombatExtended
             SelPawnForGear.jobs.TryTakeOrderedJob(job, JobTag.Misc);
         }
 
-        private bool ShouldShowInventory(Pawn p)
-        {
-            return p.RaceProps.Humanlike || p.inventory.innerContainer.Any;
-        }
-
-        private bool ShouldShowApparel(Pawn p)
-        {
-            return p.apparel != null && (p.RaceProps.Humanlike || p.apparel.WornApparel.Any());
-        }
-
-        private bool ShouldShowEquipment(Pawn p)
-        {
-            return p.equipment != null;
-        }
-
-        private bool ShouldShowOverallArmor(Pawn p)
+        private bool ShouldShowOverallArmorCE(Pawn p)
         {
             return p.RaceProps.Humanlike || ShouldShowApparel(p) || p.GetStatValue(StatDefOf.ArmorRating_Sharp, true) > 0f || p.GetStatValue(StatDefOf.ArmorRating_Blunt, true) > 0f || p.GetStatValue(StatDefOf.ArmorRating_Heat, true) > 0f;
         }
@@ -572,6 +625,39 @@ namespace CombatExtended
                 value *= 100f;
             }
             return value.ToStringByStyle(asPercent ? ToStringStyle.FloatMaxOne : ToStringStyle.FloatMaxTwo) + unit;
+        }
+
+        [Compatibility.Multiplayer.SyncMethod(syncContext = 2)]
+        private void SyncedInterfaceDrop(Thing thing) => InterfaceDrop(thing);
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedTryTransferEquipmentToContainer(Pawn p)
+        => p.equipment.TryTransferEquipmentToContainer(p.equipment.Primary, p.inventory.innerContainer);
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedTrySwitchToWeapon(CompInventory compInventory, ThingWithComps eq)
+        => compInventory.TrySwitchToWeapon(eq);
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedReloadApparel(Pawn p, Apparel apparel, Thing thing)
+        => p.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Reload, apparel, thing));
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedHoldTrackerForget(Pawn p, Thing thing)
+        => p.HoldTrackerForget(thing);
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedAddLoadout(Pawn p)
+        {
+            Loadout loadout = p.GenerateLoadoutFromPawn();
+            LoadoutManager.AddLoadout(loadout);
+            p.SetLoadout(loadout);
+
+            if (Compatibility.Multiplayer.IsExecutingCommandsIssuedBySelf)
+            // Opening this window is the same way as if from the assign tab so should be correct.
+            {
+                Find.WindowStack.Add(new Dialog_ManageLoadouts(p.GetLoadout()));
+            }
         }
 
         #endregion Methods

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Defs>
 
 	<ThingCategoryDef>
@@ -18,6 +18,7 @@
 			<Ammo_32ACP_AP>Bullet_32ACP_AP</Ammo_32ACP_AP>
 			<Ammo_32ACP_HP>Bullet_32ACP_HP</Ammo_32ACP_HP>
 		</ammoTypes>
+		<similarTo>AmmoSet_Pistol</similarTo>
 	</CombatExtended.AmmoSetDef>
 
 	<!-- ==================== Ammo ========================== -->
@@ -39,7 +40,7 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="32ACPBase">
 		<defName>Ammo_32ACP_FMJ</defName>
-		<label>.32 ACP cartridge (FMJ)</label>
+		<label>.32 ACP (FMJ)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/FMJ</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -53,7 +54,7 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="32ACPBase">
 		<defName>Ammo_32ACP_AP</defName>
-		<label>.32 ACP cartridge (AP)</label>
+		<label>.32 ACP (AP)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/AP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -61,12 +62,12 @@
 		<statBases>
 			<MarketValue>0.04</MarketValue>
 		</statBases>
-	<ammoClass>ArmorPiercing</ammoClass>
+		<ammoClass>ArmorPiercing</ammoClass>
 	</ThingDef>
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="32ACPBase">
 		<defName>Ammo_32ACP_HP</defName>
-		<label>.32 ACP cartridge (HP)</label>
+		<label>.32 ACP (HP)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/HP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -74,50 +75,52 @@
 		<statBases>
 			<MarketValue>0.04</MarketValue>
 		</statBases>
-	<ammoClass>HollowPoint</ammoClass>
+		<ammoClass>HollowPoint</ammoClass>
 	</ThingDef>
 
 	<!-- ================== Projectiles ================== -->
 
-	<ThingDef Class="CombatExtended.AmmoDef" Name="Base32ACPBullet" ParentName="BaseBullet" Abstract="true">
+	<ThingDef Name="Base32ACPBullet" ParentName="BaseBulletCE" Abstract="true">
 		<graphicData>
 			<texPath>Things/Projectile/Bullet_Small</texPath>
 			<graphicClass>Graphic_Single</graphicClass>
 		</graphicData>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageDef>Bullet</damageDef>
-			<speed>64</speed>
+			<speed>76</speed>
 			<dropsCasings>true</dropsCasings>
+			<casingMoteDefname>Fleck_PistolAmmoCasings</casingMoteDefname>
+			<casingFilthDefname>Filth_PistolAmmoCasings</casingFilthDefname>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base32ACPBullet">
+	<ThingDef ParentName="Base32ACPBullet">
 		<defName>Bullet_32ACP_FMJ</defName>
 		<label>.32 ACP bullet (FMJ)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
-			<damageAmountBase>7</damageAmountBase>
-			<armorPenetrationSharp>4</armorPenetrationSharp>
-			<armorPenetrationBlunt>3.980</armorPenetrationBlunt>
+			<damageAmountBase>8</damageAmountBase>
+			<armorPenetrationSharp>3</armorPenetrationSharp>
+			<armorPenetrationBlunt>4.6</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base32ACPBullet">
+	<ThingDef ParentName="Base32ACPBullet">
 		<defName>Bullet_32ACP_AP</defName>
 		<label>.32 ACP bullet (AP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>5</damageAmountBase>
-			<armorPenetrationSharp>8</armorPenetrationSharp>
-			<armorPenetrationBlunt>3.980</armorPenetrationBlunt>
+			<armorPenetrationSharp>6</armorPenetrationSharp>
+			<armorPenetrationBlunt>4.6</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base32ACPBullet">
+	<ThingDef ParentName="Base32ACPBullet">
 		<defName>Bullet_32ACP_HP</defName>
 		<label>.32 ACP bullet (HP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
-			<damageAmountBase>9</damageAmountBase>
+			<damageAmountBase>10</damageAmountBase>
 			<armorPenetrationSharp>2</armorPenetrationSharp>
-			<armorPenetrationBlunt>3.980</armorPenetrationBlunt>
+			<armorPenetrationBlunt>4.6</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
@@ -148,7 +151,7 @@
 		</products>
 		<workAmount>800</workAmount>
 	</RecipeDef>
-	
+
 	<RecipeDef ParentName="AmmoRecipeBase">
 		<defName>MakeAmmo_32ACP_AP</defName>
 		<label>make .32 ACP (AP) cartridge x500</label>
@@ -172,9 +175,9 @@
 		<products>
 			<Ammo_32ACP_AP>500</Ammo_32ACP_AP>
 		</products>
-		<workAmount>800</workAmount>
+		<workAmount>960</workAmount>
 	</RecipeDef>
-	
+
 	<RecipeDef ParentName="AmmoRecipeBase">
 		<defName>MakeAmmo_32ACP_HP</defName>
 		<label>make .32 ACP (HP) cartridge x500</label>

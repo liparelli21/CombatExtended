@@ -13,17 +13,17 @@ namespace CombatExtended
     {
         /// <inheritdoc cref="JobGiver_ManTurrets.TryGiveJob" />
         /// <remarks>Overriden to avoid invalid type cast exception.</remarks>
-        protected override Job TryGiveJob(Pawn pawn)
+        public override Job TryGiveJob(Pawn pawn)
         {
-            var thing = GenClosest.ClosestThingReachable(
-                GetRoot(pawn),
-                pawn.Map,
-                ThingRequest.ForGroup(ThingRequestGroup.BuildingArtificial), PathEndMode.InteractionCell, TraverseParms.For(pawn),
-                maxDistFromPoint,
-                t => t.def.hasInteractionCell &&
-                     t.def.HasComp(typeof(CompMannable)) &&
-                     pawn.CanReserve(t) &&
-                     FindAmmoForTurret(pawn, t) != null);
+            var thing = pawn.Map.GetComponent<TurretTracker>().ClosestTurret(
+                            GetRoot(pawn),
+                            PathEndMode.InteractionCell,
+                            TraverseParms.For(pawn),
+                            maxDistFromPoint,
+                            t => t.def.hasInteractionCell &&
+                            t.def.HasComp(typeof(CompMannable)) &&
+                            pawn.CanReserve(t) &&
+                            FindAmmoForTurret(pawn, t) != null);
 
             if (thing == null)
             {
@@ -46,15 +46,15 @@ namespace CombatExtended
             }
 
             return GenClosest.ClosestThingReachable(
-                turret.Position,
-                turret.Map,
-                ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
-                PathEndMode.OnCell,
-                TraverseParms.For(pawn),
-                40f,
-                t => !t.IsForbidden(pawn) &&
-                     pawn.CanReserve(t, 10, 1) &&
-                     compAmmo.Props.ammoSet.ammoTypes.Any(l => l.ammo == t.def));
+                       turret.Position,
+                       turret.Map,
+                       ThingRequest.ForGroup(ThingRequestGroup.HaulableEver),
+                       PathEndMode.OnCell,
+                       TraverseParms.For(pawn),
+                       40f,
+                       t => !t.IsForbidden(pawn) &&
+                       pawn.CanReserve(t, 10, 1) &&
+                       compAmmo.Props.ammoSet.ammoTypes.Any(l => l.ammo == t.def));
         }
     }
 }

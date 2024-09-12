@@ -14,10 +14,16 @@ namespace CombatExtended
         #region Fields
 
         private Verb verbInt = null;
+
         private List<FireMode> availableFireModes = new List<FireMode>(Enum.GetNames(typeof(FireMode)).Length);
-        private List<AimMode> availableAimModes = new List<AimMode>(Enum.GetNames(typeof(AimMode)).Length) { AimMode.AimedShot };
+        private List<AimMode> availableAimModes = new List<AimMode>(Enum.GetNames(typeof(AimMode)).Length)
+        {
+            AimMode.AimedShot
+        };
         private FireMode currentFireModeInt;
         private AimMode currentAimModeInt;
+        private bool newComp = true;
+        public TargettingMode targetMode = TargettingMode.torso;
 
         #endregion
 
@@ -28,6 +34,22 @@ namespace CombatExtended
             get
             {
                 return (CompProperties_FireModes)props;
+            }
+        }
+
+        public List<AimMode> AvailableAimModes
+        {
+            get
+            {
+                return availableAimModes;
+            }
+        }
+
+        public List<FireMode> AvailableFireModes
+        {
+            get
+            {
+                return availableFireModes;
             }
         }
 
@@ -65,23 +87,43 @@ namespace CombatExtended
                 return Caster as Pawn;
             }
         }
+
+        private bool IsTurretMannable = false;
+
+        public float HandLing
+        {
+            get
+            {
+                if (Caster is Pawn)
+                {
+                    return CasterPawn.GetStatValue(StatDefOf.ShootingAccuracyPawn);
+                }
+                IsTurretMannable = (Caster.TryGetComp<CompMannable>() != null);
+                return 0f;
+            }
+        }
         public FireMode CurrentFireMode
         {
             get
             {
-                if (useAIModes && Props.aiUseBurstMode && availableFireModes.Contains(FireMode.BurstFire)) return FireMode.BurstFire;
                 return currentFireModeInt;
+            }
+            set
+            {
+                currentFireModeInt = value;
             }
         }
         public AimMode CurrentAimMode
         {
             get
             {
-                if (useAIModes && availableAimModes.Contains(Props.aiAimMode)) return Props.aiAimMode;
                 return currentAimModeInt;
             }
+            set
+            {
+                currentAimModeInt = value;
+            }
         }
-        private bool useAIModes => Caster.Faction != Faction.OfPlayer;
 
         #endregion
 
@@ -98,12 +140,15 @@ namespace CombatExtended
             base.PostExposeData();
             Scribe_Values.Look(ref currentFireModeInt, "currentFireMode", FireMode.AutoFire);
             Scribe_Values.Look(ref currentAimModeInt, "currentAimMode", AimMode.AimedShot);
+            Scribe_Values.Look(ref targetMode, "currentTargettingMode", TargettingMode.torso);
+            Scribe_Values.Look(ref newComp, "newComp", false);
         }
 
-        private void InitAvailableFireModes()
+        public void InitAvailableFireModes()
         {
+            availableFireModes.Clear();
             // Calculate available fire modes
-            if (Verb.verbProps.burstShotCount > 1 || Props.noSingleShot)
+            if (parent.GetStatValue(CE_StatDefOf.BurstShotCount) > 1 || Props.noSingleShot)
             {
                 availableFireModes.Add(FireMode.AutoFire);
             }
@@ -129,8 +174,9 @@ namespace CombatExtended
             }
 
             // Sanity check in case def changed
-            if (!availableFireModes.Contains(currentFireModeInt) || !availableAimModes.Contains(currentAimModeInt))
+            if (newComp || !availableFireModes.Contains(currentFireModeInt) || !availableAimModes.Contains(currentAimModeInt))
             {
+                newComp = false;
                 ResetModes();
             }
         }
@@ -138,20 +184,48 @@ namespace CombatExtended
         /// <summary>
         /// Cycles through all available fire modes in order
         /// </summary>
+        [Compatibility.Multiplayer.SyncMethod]
         public void ToggleFireMode()
         {
             int currentFireModeNum = availableFireModes.IndexOf(currentFireModeInt);
             currentFireModeNum = (currentFireModeNum + 1) % availableFireModes.Count;
             currentFireModeInt = availableFireModes.ElementAt(currentFireModeNum);
-            if (availableFireModes.Count > 1) PlayerKnowledgeDatabase.KnowledgeDemonstrated(CE_ConceptDefOf.CE_FireModes, KnowledgeAmount.Total);
+            if (availableFireModes.Count > 1)
+            {
+                PlayerKnowledgeDatabase.KnowledgeDemonstrated(CE_ConceptDefOf.CE_FireModes, KnowledgeAmount.Total);
+            }
         }
 
+        [Compatibility.Multiplayer.SyncMethod]
         public void ToggleAimMode()
         {
             int currentAimModeNum = availableAimModes.IndexOf(currentAimModeInt);
             currentAimModeNum = (currentAimModeNum + 1) % availableAimModes.Count;
             currentAimModeInt = availableAimModes.ElementAt(currentAimModeNum);
-            if (availableAimModes.Count > 1) PlayerKnowledgeDatabase.KnowledgeDemonstrated(CE_ConceptDefOf.CE_AimModes, KnowledgeAmount.Total);
+            if (availableAimModes.Count > 1)
+            {
+                PlayerKnowledgeDatabase.KnowledgeDemonstrated(CE_ConceptDefOf.CE_AimModes, KnowledgeAmount.Total);
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        public void ChangeTargetMode()
+        {
+            switch (targetMode)
+            {
+                case TargettingMode.torso:
+                    targetMode = TargettingMode.head;
+                    break;
+                case TargettingMode.head:
+                    targetMode = TargettingMode.legs;
+                    break;
+                case TargettingMode.legs:
+                    targetMode = TargettingMode.automatic;
+                    break;
+                case TargettingMode.automatic:
+                    targetMode = TargettingMode.torso;
+                    break;
+            }
         }
 
         /// <summary>
@@ -159,21 +233,49 @@ namespace CombatExtended
         /// </summary>
         public void ResetModes()
         {
-        		//Required since availableFireModes.Capacity is set but its contents aren't so ElementAt(0) causes errors in some instances
-        	if (availableFireModes.Count > 0)
-            	currentFireModeInt = availableFireModes.ElementAt(0);
-            
-        	currentAimModeInt = availableAimModes.ElementAt(0);
+            //Required since availableFireModes.Capacity is set but its contents aren't so ElementAt(0) causes errors in some instances
+            if (availableFireModes.Count > 0)
+            {
+                currentFireModeInt = availableFireModes.ElementAt(0);
+            }
+
+            currentAimModeInt = Props.aiAimMode;
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            if (CasterPawn != null && CasterPawn.Faction.Equals(Faction.OfPlayer))
+            if (CasterPawn?.Faction == Faction.OfPlayer)
             {
-                foreach(Command com in GenerateGizmos())
+                foreach (Command com in GenerateGizmos())
                 {
                     yield return com;
                 }
+            }
+        }
+
+        public Texture2D TrueIcon
+        {
+            get
+            {
+                string mode_name = "";
+
+                switch (targetMode)
+                {
+                    case TargettingMode.torso:
+                        mode_name = "center";
+                        break;
+                    case TargettingMode.legs:
+                        mode_name = "legs";
+                        break;
+                    case TargettingMode.head:
+                        mode_name = "head";
+                        break;
+                    case TargettingMode.automatic:
+                        mode_name = "auto";
+                        break;
+                }
+
+                return ContentFinder<Texture2D>.Get("UI/Buttons/Targetting/" + mode_name);
             }
         }
 
@@ -209,6 +311,21 @@ namespace CombatExtended
                 LessonAutoActivator.TeachOpportunity(CE_ConceptDefOf.CE_AimModes, parent, OpportunityType.GoodToKnow);
             }
             yield return toggleAimModeGizmo;
+
+
+            if (CurrentAimMode != AimMode.SuppressFire)
+            {
+                if ((HandLing > 2.45f) | IsTurretMannable)
+                {
+                    yield return new Command_Action
+                    {
+                        defaultLabel = "Targeted area: " + targetMode,
+                        defaultDesc = "",
+                        icon = TrueIcon,
+                        action = ChangeTargetMode
+                    };
+                }
+            }
         }
 
         /*

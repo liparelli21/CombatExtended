@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <Patch>
 
 	<!-- ========== Muffalo ========== -->
@@ -7,9 +7,9 @@
 		<xpath>Defs/ThingDef[defName="Muffalo"]/statBases/MoveSpeed</xpath>
 		<value>
 			<MoveSpeed>5</MoveSpeed>
-			<MeleeDodgeChance>0.12</MeleeDodgeChance>
-			<MeleeCritChance>0.33</MeleeCritChance>
-			<MeleeParryChance>0.20</MeleeParryChance>
+			<MeleeDodgeChance>0.36</MeleeDodgeChance>
+			<MeleeCritChance>0.12</MeleeCritChance>
+			<MeleeParryChance>0.15</MeleeParryChance>
 		</value>
 	</Operation>
 
@@ -25,17 +25,59 @@
 					<power>24</power>
 					<cooldownTime>3.17</cooldownTime>
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
-					<chanceFactor>0.2</chanceFactor>
 					<armorPenetrationBlunt>10</armorPenetrationBlunt>
 				</li>
+				<li Class="CombatExtended.ToolCE">
+					<label>left hoof</label>
+					<capacities>
+						<li>Blunt</li>
+					</capacities>
+					<power>9</power>
+					<cooldownTime>1.2</cooldownTime>
+					<armorPenetrationBlunt>2.250</armorPenetrationBlunt>
+					<linkedBodyPartsGroup>FrontLeftLeg</linkedBodyPartsGroup>
+				</li>
+				<li Class="CombatExtended.ToolCE">
+					<label>left hoof</label>
+					<capacities>
+						<li>Poke</li>
+					</capacities>
+					<power>9</power>
+					<cooldownTime>1.2</cooldownTime>
+					<armorPenetrationBlunt>2.250</armorPenetrationBlunt>
+					<linkedBodyPartsGroup>FrontLeftLeg_2</linkedBodyPartsGroup>
+				</li>
+				<li Class="CombatExtended.ToolCE">
+					<label>right hoof</label>
+					<capacities>
+						<li>Blunt</li>
+					</capacities>
+					<power>9</power>
+					<cooldownTime>1.2</cooldownTime>
+					<armorPenetrationBlunt>2.250</armorPenetrationBlunt>
+					<linkedBodyPartsGroup>FrontRightLeg</linkedBodyPartsGroup>
+				</li>
+				<li Class="CombatExtended.ToolCE">
+					<label>right hoof</label>
+					<capacities>
+						<li>Poke</li>
+					</capacities>
+					<power>9</power>
+					<cooldownTime>1.2</cooldownTime>
+					<armorPenetrationBlunt>2.250</armorPenetrationBlunt>
+					<linkedBodyPartsGroup>FrontRightLeg_2</linkedBodyPartsGroup>
+				</li>
+				<li Class="CombatExtended.ToolCE">
+					<capacities>
+						<li>Bite</li>
+					</capacities>
+					<power>5</power>
+					<cooldownTime>0.8</cooldownTime>
+					<chanceFactor>0.5</chanceFactor>
+					<linkedBodyPartsGroup>Teeth</linkedBodyPartsGroup>
+					<armorPenetrationBlunt>0.5</armorPenetrationBlunt>
+				</li>
 			</tools>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Muffalo"]/race/baseBodySize</xpath>
-		<value>
-			<baseBodySize>2</baseBodySize>
 		</value>
 	</Operation>
 
@@ -48,10 +90,26 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Muffalo"]/combatPower</xpath>
+	<Operation Class="PatchOperationConditional">
+		<xpath>Defs/ThingDef[defName="Muffalo"]/comps</xpath>
+		<nomatch Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="Muffalo"]</xpath>
+			<value>
+				<comps />
+			</value>
+		</nomatch>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[defName="Muffalo"]/comps</xpath>
 		<value>
-			<combatPower>90</combatPower>
+			<li Class="CombatExtended.CompProperties_ArmorDurability">
+				<Durability>1037</Durability>
+				<Regenerates>true</Regenerates>
+				<RegenInterval>600</RegenInterval>
+				<RegenValue>5</RegenValue>
+				<MinArmorPct>0.75</MinArmorPct>
+			</li>
 		</value>
 	</Operation>
 
@@ -61,9 +119,9 @@
 		<xpath>Defs/ThingDef[defName="Gazelle"]/statBases/MoveSpeed</xpath>
 		<value>
 			<MoveSpeed>6.2</MoveSpeed>
-			<MeleeDodgeChance>0.21</MeleeDodgeChance>
+			<MeleeDodgeChance>0.23</MeleeDodgeChance>
 			<MeleeCritChance>0.10</MeleeCritChance>
-			<MeleeParryChance>0.04</MeleeParryChance>
+			<MeleeParryChance>0.05</MeleeParryChance>
 		</value>
 	</Operation>
 
@@ -113,7 +171,7 @@
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<capacities>
-						<li>BiteBlunt</li>
+						<li>Bite</li>
 					</capacities>
 					<power>1</power>
 					<cooldownTime>0.84</cooldownTime>
@@ -135,33 +193,12 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Gazelle"]/race/baseBodySize</xpath>
-		<value>
-			<baseBodySize>0.5</baseBodySize>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Gazelle"]/race/baseHealthScale</xpath>
-		<value>
-			<baseHealthScale>0.5</baseHealthScale>
-		</value>
-	</Operation>
-
 	<Operation Class="PatchOperationAddModExtension">
 		<xpath>Defs/ThingDef[defName="Gazelle"]</xpath>
 		<value>
 			<li Class="CombatExtended.RacePropertiesExtensionCE">
 				<bodyShape>Quadruped</bodyShape>
 			</li>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Gazelle"]/combatPower</xpath>
-		<value>
-			<combatPower>30</combatPower>
 		</value>
 	</Operation>
 
@@ -172,6 +209,7 @@
 		<value>
 			<MeleeDodgeChance>0.14</MeleeDodgeChance>
 			<MeleeCritChance>0.02</MeleeCritChance>
+			<MeleeParryChance>0.02</MeleeParryChance>
 		</value>
 	</Operation>
 
@@ -225,20 +263,6 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Iguana"]/race/baseBodySize</xpath>
-		<value>
-			<baseBodySize>0.28</baseBodySize>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Iguana"]/race/baseHealthScale</xpath>
-		<value>
-			<baseHealthScale>0.3</baseHealthScale>
-		</value>
-	</Operation>
-
 	<Operation Class="PatchOperationAddModExtension">
 		<xpath>Defs/ThingDef[defName="Iguana"]</xpath>
 		<value>
@@ -248,22 +272,15 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Iguana"]/combatPower</xpath>
-		<value>
-			<combatPower>20</combatPower>
-		</value>
-	</Operation>
-
 	<!-- ========== Rhinoceros ========== -->
 
 	<Operation Class="PatchOperationReplace">
 		<xpath>Defs/ThingDef[defName="Rhinoceros"]/statBases/MoveSpeed</xpath>
 		<value>
 			<MoveSpeed>5.5</MoveSpeed>
-			<MeleeDodgeChance>0.1</MeleeDodgeChance>
-			<MeleeCritChance>0.57</MeleeCritChance>
-			<MeleeParryChance>0.27</MeleeParryChance>
+			<MeleeDodgeChance>0.11</MeleeDodgeChance>
+			<MeleeCritChance>0.52</MeleeCritChance>
+			<MeleeParryChance>0.33</MeleeParryChance>
 			<ArmorRating_Blunt>8</ArmorRating_Blunt>
 			<ArmorRating_Sharp>0.28</ArmorRating_Sharp>
 		</value>
@@ -299,6 +316,7 @@
 					</capacities>
 					<power>10</power>
 					<cooldownTime>2.44</cooldownTime>
+					<chanceFactor>0.7</chanceFactor>
 					<linkedBodyPartsGroup>Teeth</linkedBodyPartsGroup>
 					<armorPenetrationSharp>0.04</armorPenetrationSharp>
 					<armorPenetrationBlunt>3.5</armorPenetrationBlunt>
@@ -318,20 +336,6 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Rhinoceros"]/race/baseBodySize</xpath>
-		<value>
-			<baseBodySize>2.1</baseBodySize>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Rhinoceros"]/race/baseHealthScale</xpath>
-		<value>
-			<baseHealthScale>2.4</baseHealthScale>
-		</value>
-	</Operation>
-
 	<Operation Class="PatchOperationAddModExtension">
 		<xpath>Defs/ThingDef[defName="Rhinoceros"]</xpath>
 		<value>
@@ -341,10 +345,26 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Rhinoceros"]/combatPower</xpath>
+	<Operation Class="PatchOperationConditional">
+		<xpath>Defs/ThingDef[defName="Rhinoceros"]/comps</xpath>
+		<nomatch Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="Rhinoceros"]</xpath>
+			<value>
+				<comps />
+			</value>
+		</nomatch>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[defName="Rhinoceros"]/comps</xpath>
 		<value>
-			<combatPower>200</combatPower>
+			<li Class="CombatExtended.CompProperties_ArmorDurability">
+				<Durability>1625</Durability>
+				<Regenerates>true</Regenerates>
+				<RegenInterval>600</RegenInterval>
+				<RegenValue>5</RegenValue>
+				<MinArmorPct>0.75</MinArmorPct>
+			</li>
 		</value>
 	</Operation>
 
@@ -353,9 +373,9 @@
 	<Operation Class="PatchOperationAdd">
 		<xpath>Defs/ThingDef[defName="Dromedary"]/statBases</xpath>
 		<value>
-			<MeleeDodgeChance>0.08</MeleeDodgeChance>
-			<MeleeCritChance>0.13</MeleeCritChance>
-			<MeleeParryChance>0.13</MeleeParryChance>
+			<MeleeDodgeChance>0.12</MeleeDodgeChance>
+			<MeleeCritChance>0.18</MeleeCritChance>
+			<MeleeParryChance>0.19</MeleeParryChance>
 		</value>
 	</Operation>
 
@@ -372,7 +392,6 @@
 					<cooldownTime>1.19</cooldownTime>
 					<armorPenetrationBlunt>2.250</armorPenetrationBlunt>
 					<linkedBodyPartsGroup>FrontLeftLeg</linkedBodyPartsGroup>
-
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>left hoof</label>
@@ -406,12 +425,13 @@
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<capacities>
-						<li>BiteBlunt</li>
+						<li>Bite</li>
 					</capacities>
-					<power>1</power>
+					<power>4</power>
 					<cooldownTime>0.84</cooldownTime>
+					<chanceFactor>0.7</chanceFactor>
 					<linkedBodyPartsGroup>Teeth</linkedBodyPartsGroup>
-					<armorPenetrationBlunt>0.05</armorPenetrationBlunt>
+					<armorPenetrationBlunt>0.4</armorPenetrationBlunt>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>head</label>
@@ -428,20 +448,6 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Dromedary"]/race/baseBodySize</xpath>
-		<value>
-			<baseBodySize>1.1</baseBodySize>
-		</value>
-	</Operation>
-
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[defName="Dromedary"]/race/baseHealthScale</xpath>
-		<value>
-			<baseHealthScale>1</baseHealthScale>
-		</value>
-	</Operation>
-
 	<Operation Class="PatchOperationAddModExtension">
 		<xpath>Defs/ThingDef[defName="Dromedary"]</xpath>
 		<value>
@@ -451,12 +457,4 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Dromedary"]/combatPower</xpath>
-		<value>
-			<combatPower>80</combatPower>
-		</value>
-	</Operation>
-
 </Patch>
-

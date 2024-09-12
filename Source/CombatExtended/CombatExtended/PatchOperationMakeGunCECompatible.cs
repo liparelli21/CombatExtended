@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Xml;
 
 using Verse;
@@ -8,16 +9,21 @@ namespace CombatExtended
     public class PatchOperationMakeGunCECompatible : PatchOperation
     {
         public string defName;
+        public string texPath;
+        public bool isWeaponPlatform = false;
         public bool AllowWithRunAndGun = true;
         public XmlContainer statBases;
         public XmlContainer Properties;
         public XmlContainer AmmoUser;
         public XmlContainer FireModes;
         public XmlContainer weaponTags;
+        public XmlContainer weaponClasses;
         public XmlContainer costList;
         public XmlContainer researchPrerequisite;
+        public XmlContainer attachmentLinks;
+        public XmlContainer defaultGraphicParts;
 
-        protected override bool ApplyWorker(XmlDocument xml)
+        public override bool ApplyWorker(XmlDocument xml)
         {
             bool result = false;
 
@@ -25,13 +31,27 @@ namespace CombatExtended
             {
                 return false;
             }
-
             foreach (var current in xml.SelectNodes("Defs/ThingDef[defName=\"" + defName + "\"]"))
             {
                 result = true;
 
                 var xmlNode = current as XmlNode;
-
+                if (isWeaponPlatform || (attachmentLinks?.node.HasChildNodes ?? false) || (defaultGraphicParts?.node.HasChildNodes ?? false))
+                {
+                    MakeWeaponPlatform(xml, xmlNode);
+                }
+                if (texPath != null)
+                {
+                    AddOrReplaceTexPath(xml, xmlNode);
+                }
+                if (attachmentLinks?.node.HasChildNodes ?? false)
+                {
+                    AddOrReplaceAttachmentLinks(xml, xmlNode);
+                }
+                if (defaultGraphicParts?.node.HasChildNodes ?? false)
+                {
+                    AddOrReplaceDefaultGraphicParts(xml, xmlNode); ;
+                }
                 if (statBases?.node.HasChildNodes ?? false)
                 {
                     AddOrReplaceStatBases(xml, xmlNode);
@@ -40,35 +60,77 @@ namespace CombatExtended
                 {
                     AddOrReplaceCostList(xml, xmlNode);
                 }
-
                 if (Properties != null && Properties.node.HasChildNodes)
                 {
                     AddOrReplaceVerbPropertiesCE(xml, xmlNode);
                 }
-
                 if (AmmoUser != null || FireModes != null)
                 {
                     AddOrReplaceCompsCE(xml, xmlNode);
                 }
-
+                if (weaponClasses != null && weaponClasses.node.HasChildNodes)
+                {
+                    AddOrReplaceWeaponClasses(xml, xmlNode);
+                }
                 if (weaponTags != null && weaponTags.node.HasChildNodes)
                 {
                     AddOrReplaceWeaponTags(xml, xmlNode);
                 }
-
                 if (researchPrerequisite != null)
                 {
                     AddOrReplaceResearchPrereq(xml, xmlNode);
                 }
-
                 // RunAndGun compatibility
                 if (ModLister.HasActiveModWithName("RunAndGun") && !AllowWithRunAndGun)
                 {
                     AddRunAndGunExtension(xml, xmlNode);
                 }
             }
-
             return result;
+        }
+
+        private void MakeWeaponPlatform(XmlDocument xml, XmlNode xmlNode)
+        {
+            XmlElement element = xmlNode as XmlElement;
+            if (element.Name.Contains("WeaponPlatformDef"))
+            {
+                return;
+            }
+            element.SetAttribute("Class", "CombatExtended.WeaponPlatformDef"); // change node def type
+
+            GetOrCreateNode(xml, xmlNode, "thingClass", out XmlElement thingClassElement); // change thingClass
+            if (!thingClassElement.InnerText.StartsWith("CombatExtended"))
+            {
+                thingClassElement.InnerText = "CombatExtended.WeaponPlatform";
+            }
+
+            GetOrCreateNode(xml, xmlNode, "drawerType", out XmlElement drawerTypeElement); // change thingClass
+            drawerTypeElement.InnerText = "RealtimeOnly";
+        }
+
+        private void AddOrReplaceAttachmentLinks(XmlDocument xml, XmlNode xmlNode)
+        {
+            GetOrCreateNode(xml, xmlNode, nameof(WeaponPlatformDef.attachmentLinks), out XmlElement element);
+
+            Populate(xml, this.attachmentLinks.node, ref element);
+        }
+
+        private void AddOrReplaceDefaultGraphicParts(XmlDocument xml, XmlNode xmlNode)
+        {
+            GetOrCreateNode(xml, xmlNode, nameof(WeaponPlatformDef.defaultGraphicParts), out XmlElement element);
+
+            Populate(xml, this.defaultGraphicParts.node, ref element);
+        }
+
+        private void AddOrReplaceTexPath(XmlDocument xml, XmlNode xmlNode)
+        {
+            GetOrCreateNode(xml, xmlNode, "graphicData", out XmlElement elementGData);
+
+            GetOrCreateNode(xml, elementGData, "texPath", out XmlElement elementTexPath);
+            elementTexPath.InnerText = texPath;
+
+            GetOrCreateNode(xml, elementGData, "graphicClass", out XmlElement elementGClass);
+            elementGClass.InnerText = "Graphic_Single";
         }
 
         private bool GetOrCreateNode(XmlDocument xml, XmlNode xmlNode, string name, out XmlElement output)
@@ -96,7 +158,6 @@ namespace CombatExtended
             }
 
             Populate(xml, reference, ref element);
-
             return element;
         }
 
@@ -155,6 +216,13 @@ namespace CombatExtended
             {
                 comps.AppendChild(CreateListElementAndPopulate(xml, FireModes.node, "CombatExtended.CompProperties_FireModes"));
             }
+        }
+        private void AddOrReplaceWeaponClasses(XmlDocument xml, XmlNode xmlNode)
+        {
+            XmlElement weaponClassesElement;
+            GetOrCreateNode(xml, xmlNode, "weaponClasses", out weaponClassesElement);
+
+            Populate(xml, this.weaponClasses.node, ref weaponClassesElement);
         }
 
         private void AddOrReplaceWeaponTags(XmlDocument xml, XmlNode xmlNode)

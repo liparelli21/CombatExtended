@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Defs>
 
 	<ThingCategoryDef>
@@ -17,11 +17,12 @@
 			<Ammo_100x695mmRCannonShell_HEAT>Bullet_100x695mmRCannonShell_HEAT</Ammo_100x695mmRCannonShell_HEAT>
 			<Ammo_100x695mmRCannonShell_HE>Bullet_100x695mmRCannonShell_HE</Ammo_100x695mmRCannonShell_HE>
 		</ammoTypes>
+		<similarTo>AmmoSet_HeavyCannon</similarTo>
 	</CombatExtended.AmmoSetDef>
 
 	<!-- ==================== Ammo ========================== -->
 
-	<ThingDef Class="CombatExtended.AmmoDef" Name="100x695mmRCannonShellBase" ParentName="AmmoBase" Abstract="True">
+	<ThingDef Class="CombatExtended.AmmoDef" Name="100x695mmRCannonShellBase" ParentName="HeavyAmmoBase" Abstract="True">
 		<description>Large cannon shells, typically used by D-10 tank guns.</description>
 		<thingCategories>
 			<li>Ammo100x695mmRCannonShells</li>
@@ -43,12 +44,12 @@
 		<defName>Ammo_100x695mmRCannonShell_HEAT</defName>
 		<label>100x695mmR cannon shell (HEAT)</label>
 		<graphicData>
-			<texPath>Things/Ammo/Cannon/HEAT</texPath>
-			<graphicClass>Graphic_Single</graphicClass>
+			<texPath>Things/Ammo/Cannon/Tank/HEATFS</texPath>
+			<graphicClass>Graphic_StackCount</graphicClass>
 		</graphicData>
 		<statBases>
 			<Mass>30.16</Mass>
-			<MarketValue>170</MarketValue>
+			<MarketValue>173.07</MarketValue>
 		</statBases>
 		<ammoClass>RocketHEAT</ammoClass>
 		<detonateProjectile>Bullet_100x695mmRCannonShell_HEAT</detonateProjectile>
@@ -58,12 +59,12 @@
 		<defName>Ammo_100x695mmRCannonShell_HE</defName>
 		<label>100x695mmR cannon shell (HE)</label>
 		<graphicData>
-			<texPath>Things/Ammo/Cannon/HE</texPath>
-			<graphicClass>Graphic_Single</graphicClass>
+			<texPath>Things/Ammo/Cannon/Tank/HE</texPath>
+			<graphicClass>Graphic_StackCount</graphicClass>
 		</graphicData>
 		<statBases>
 			<Mass>30.27</Mass>
-			<MarketValue>183.19</MarketValue>
+			<MarketValue>180.9</MarketValue>
 		</statBases>
 		<ammoClass>GrenadeHE</ammoClass>
 		<detonateProjectile>Bullet_100x695mmRCannonShell_HE</detonateProjectile>
@@ -71,24 +72,24 @@
 
 	<!-- ================== Projectiles ================== -->
 
-	<ThingDef Class="CombatExtended.AmmoDef" Name="Base100x695mmRCannonShell" ParentName="BaseBullet" Abstract="true">
+	<ThingDef Name="Base100x695mmRCannonShell" ParentName="BaseExplosiveBullet" Abstract="true">
 		<graphicData>
 			<shaderType>TransparentPostLight</shaderType>
 		</graphicData>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
-			<speed>180</speed>
-			<soundExplode>MortarBomb_Explode</soundExplode>
+			<speed>165</speed>
 			<flyOverhead>false</flyOverhead>
 			<dropsCasings>true</dropsCasings>
-			<casingMoteDefname>Mote_BigShell</casingMoteDefname>
+			<casingMoteDefname>Fleck_BigShell</casingMoteDefname>
+			<casingFilthDefname>Filth_CannonAmmoCasings</casingFilthDefname>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base100x695mmRCannonShell">
+	<ThingDef ParentName="Base100x695mmRCannonShell">
 		<defName>Bullet_100x695mmRCannonShell_HEAT</defName>
 		<label>100x695mmR cannon shell (HEAT)</label>
 		<graphicData>
-			<texPath>Things/Projectile/Cannon/HEAT</texPath>
+			<texPath>Things/Projectile/Cannon/HEATFS</texPath>
 			<graphicClass>Graphic_Single</graphicClass>
 		</graphicData>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
@@ -99,22 +100,22 @@
 			<armorPenetrationBlunt>52.045</armorPenetrationBlunt>
 		</projectile>
 		<comps>
-		  <li Class="CombatExtended.CompProperties_ExplosiveCE">
-			<damageAmountBase>173</damageAmountBase>
-			<explosiveDamageType>Bomb</explosiveDamageType>
-			<explosiveRadius>1.5</explosiveRadius>
-			<applyDamageToExplosionCellsNeighbors>true</applyDamageToExplosionCellsNeighbors>
-		  </li>
-		  <li Class="CombatExtended.CompProperties_Fragments">
-			<fragments>
-				<Fragment_Large>27</Fragment_Large>
-			  <Fragment_Small>60</Fragment_Small>
-			</fragments>
-		  </li>
+			<li Class="CombatExtended.CompProperties_ExplosiveCE">
+				<damageAmountBase>173</damageAmountBase>
+				<explosiveDamageType>Bomb</explosiveDamageType>
+				<explosiveRadius>1.5</explosiveRadius>
+				<applyDamageToExplosionCellsNeighbors>true</applyDamageToExplosionCellsNeighbors>
+			</li>
+			<li Class="CombatExtended.CompProperties_Fragments">
+				<fragments>
+					<Fragment_Large>27</Fragment_Large>
+					<Fragment_Small>15</Fragment_Small>
+				</fragments>
+			</li>
 		</comps>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base100x695mmRCannonShell">
+	<ThingDef ParentName="Base100x695mmRCannonShell">
 		<defName>Bullet_100x695mmRCannonShell_HE</defName>
 		<label>100x695mmR cannon shell (HE)</label>
 		<thingClass>CombatExtended.ProjectileCE_Explosive</thingClass>
@@ -132,8 +133,8 @@
 		<comps>
 			<li Class="CombatExtended.CompProperties_Fragments">
 				<fragments>
-					<Fragment_Large>52</Fragment_Large>
-					<Fragment_Small>163</Fragment_Small>
+					<Fragment_Large>40</Fragment_Large>
+					<Fragment_Small>41</Fragment_Small>
 				</fragments>
 			</li>
 		</comps>
@@ -141,11 +142,16 @@
 
 	<!-- ==================== Recipes ========================== -->
 
-	<RecipeDef ParentName="AmmoRecipeBase">
+	<RecipeDef ParentName="CannonAmmoRecipeBase">
 		<defName>MakeAmmo_100x695mmRCannonShell_HEAT</defName>
-		<label>make 100x695mmR HEAT cannon shells x2</label>
-		<description>Craft 2 100x695mmR HEAT cannon shells.</description>
-		<jobString>Making 100x695mmR HEAT cannon shells.</jobString>
+		<label>make 100x695mmR (HEAT) cannon shells x2</label>
+		<description>Craft 2 100x695mmR (HEAT) cannon shells.</description>
+		<jobString>Making 100x695mmR (HEAT) cannon shells.</jobString>
+		<researchPrerequisite Inherit="False" />
+		<researchPrerequisites>
+			<li>CE_TurretHeavyWeapons</li>
+			<li>CE_Launchers</li>
+		</researchPrerequisites>
 		<workAmount>15400</workAmount>
 		<ingredients>
 			<li>
@@ -185,11 +191,11 @@
 		</products>
 	</RecipeDef>
 
-	<RecipeDef ParentName="AmmoRecipeBase">
+	<RecipeDef ParentName="CannonAmmoRecipeBase">
 		<defName>MakeAmmo_100x695mmRCannonShell_HE</defName>
-		<label>make 100x695mmR HE cannon shells x2</label>
-		<description>Craft 5 100x695mmR HE cannon shells.</description>
-		<jobString>Making 100x695mmR HE cannon shells.</jobString>
+		<label>make 100x695mmR (HE) cannon shells x2</label>
+		<description>Craft 5 100x695mmR (HE) cannon shells.</description>
+		<jobString>Making 100x695mmR (HE) cannon shells.</jobString>
 		<workAmount>16200</workAmount>
 		<ingredients>
 			<li>

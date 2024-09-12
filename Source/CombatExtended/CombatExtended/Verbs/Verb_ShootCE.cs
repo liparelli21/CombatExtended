@@ -1,4 +1,4 @@
-using RimWorld;
+﻿using RimWorld;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,27 +29,25 @@ namespace CombatExtended
 
         private bool _isAiming;
 
+        public Vector3 drawPos;
+
         #endregion
 
         #region Properties
 
-        protected override int ShotsPerBurst
+        public bool isBipodGun
         {
             get
             {
-                if (CompFireModes != null)
-                {
-                    if (CompFireModes.CurrentFireMode == FireMode.SingleFire)
-                    {
-                        return 1;
-                    }
-                    if (CompFireModes.CurrentFireMode == FireMode.BurstFire
-                        && CompFireModes.Props.aimedBurstShotCount > 0)
-                    {
-                        return CompFireModes.Props.aimedBurstShotCount;
-                    }
-                }
-                return VerbPropsCE.burstShotCount;
+                return ((this.EquipmentSource?.TryGetComp<BipodComp>() ?? null) != null);
+
+            }
+        }
+        public override int ShotsPerBurst
+        {
+            get
+            {
+                return CompFireModes != null ? ShotsPerBurstFor(CompFireModes.CurrentFireMode) : VerbPropsCE.burstShotCount;
             }
         }
 
@@ -63,10 +61,15 @@ namespace CombatExtended
                     {
                         // Check for hunting job
                         if (ShooterPawn.CurJob != null && ShooterPawn.CurJob.def == JobDefOf.Hunt)
+                        {
                             return true;
+                        }
 
                         // Check for suppression
-                        if (IsSuppressed) return false;
+                        if (IsSuppressed)
+                        {
+                            return false;
+                        }
 
                         // Check for RunAndGun mod
                         if (ShooterPawn.pather?.Moving ?? false)
@@ -80,14 +83,51 @@ namespace CombatExtended
             }
         }
 
-        protected override float SwayAmplitude
+        public override float SwayAmplitude // TODO: Fix SwayAmplitude and SwayAmplitudeFor code re-use
         {
             get
             {
                 var sway = base.SwayAmplitude;
-                if (ShouldAim) { return sway * Mathf.Max(0, 1 - AimingAccuracy) / Mathf.Max(1, SightsEfficiency); }
-                else if (IsSuppressed) { return sway * SuppressionSwayFactor; }
+                float sightsEfficiency = SightsEfficiency;
+                if (ShooterPawn != null && !ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Sight))
+                {
+                    sightsEfficiency = 0;
+                }
+                if (ShouldAim)
+                {
+                    return sway * Mathf.Max(0, 1 - AimingAccuracy) / Mathf.Max(1, sightsEfficiency);
+                }
+                else if (IsSuppressed)
+                {
+                    return sway * SuppressionSwayFactor;
+                }
                 return sway;
+            }
+        }
+
+        public float AimAngle
+        {
+            get
+            {
+                if (this.CurrentTarget == null)
+                {
+                    return 143f;
+                }
+                Vector3 vector = (CurrentTarget.Thing == null ? CurrentTarget.Cell.ToVector3Shifted() : CurrentTarget.Thing.DrawPos);
+                float num = 143f;
+                if ((vector - caster.DrawPos).MagnitudeHorizontalSquared() > 0.001f)
+                {
+                    num = (vector - caster.DrawPos).AngleFlat();
+                }
+                return num;
+            }
+        }
+
+        public float SpreadDegrees
+        {
+            get
+            {
+                return (EquipmentSource?.GetStatValue(CE_StatDefOf.ShotSpread) ?? 0) * (projectilePropsCE != null ? projectilePropsCE.spreadMult : 0f);
             }
         }
 
@@ -97,6 +137,75 @@ namespace CombatExtended
         #endregion
 
         #region Methods
+
+        public float SwayAmplitudeFor(AimMode mode)
+        {
+            float sway = base.SwayAmplitude;
+            float sightsEfficiency = SightsEfficiency;
+            if (ShooterPawn != null && !ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Sight))
+            {
+                sightsEfficiency = 0;
+            }
+            if (ShouldAimFor(mode))
+            {
+                return sway * Mathf.Max(0, 1 - AimingAccuracy) / Mathf.Max(1, sightsEfficiency);
+            }
+            else if (IsSuppressed)
+            {
+                return sway * SuppressionSwayFactor;
+            }
+            return sway;
+        }
+
+        public bool ShouldAimFor(AimMode mode)
+        {
+            if (ShooterPawn != null)
+            {
+                // Check for hunting job
+                if (ShooterPawn.CurJob != null && ShooterPawn.CurJob.def == JobDefOf.Hunt)
+                {
+                    return true;
+                }
+
+                // Check for suppression
+                if (IsSuppressed)
+                {
+                    return false;
+                }
+
+                // Check for RunAndGun mod
+                if (ShooterPawn.pather?.Moving ?? false)
+                {
+                    return false;
+                }
+            }
+            return mode == AimMode.AimedShot;
+        }
+
+        public virtual int ShotsPerBurstFor(FireMode mode)
+        {
+            if (CompFireModes != null)
+            {
+                if (mode == FireMode.SingleFire)
+                {
+                    return 1;
+                }
+                if (mode == FireMode.BurstFire && CompFireModes.Props.aimedBurstShotCount > 0)
+                {
+                    return CompFireModes.Props.aimedBurstShotCount;
+                }
+            }
+            float burstShotCount = VerbPropsCE.burstShotCount;
+            if (EquipmentSource != null && (!EquipmentSource.TryGetComp<CompUnderBarrel>()?.usingUnderBarrel ?? false))
+            {
+                float modified = EquipmentSource.GetStatValue(CE_StatDefOf.BurstShotCount);
+                if (modified > 0)
+                {
+                    burstShotCount = modified;
+                }
+            }
+            return (int)burstShotCount;
+        }
 
         /// <summary>
         /// Handles activating aim mode at the start of the burst
@@ -117,6 +226,7 @@ namespace CombatExtended
                 {
                     ShooterPawn.stances.SetStance(new Stance_Warmup(aimTicks, currentTarget, this));
                     _isAiming = true;
+                    RecalculateWarmupTicks();
                     return;
                 }
             }
@@ -151,18 +261,38 @@ namespace CombatExtended
                     _isAiming = false;
                 }
             }
+
+            if (isBipodGun && Controller.settings.BipodMechanics)
+            {
+                EquipmentSource.TryGetComp<BipodComp>().SetUpStart(CasterPawn);
+            }
         }
 
-        /// <summary>
-        /// Reset selected fire mode back to default when gun is dropped
-        /// </summary>
-        public override void Notify_EquipmentLost()
+        public virtual ShiftVecReport SimulateShiftVecReportFor(LocalTargetInfo target, AimMode aimMode)
         {
-            base.Notify_EquipmentLost();
-            if (CompFireModes != null)
+            IntVec3 targetCell = target.Cell;
+            ShiftVecReport report = new ShiftVecReport();
+
+            report.target = target;
+            report.aimingAccuracy = AimingAccuracy;
+            report.sightsEfficiency = SightsEfficiency;
+            if (ShooterPawn != null && !ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Sight))
             {
-                CompFireModes.ResetModes();
+                report.sightsEfficiency = 0;
             }
+            report.shotDist = (targetCell - caster.Position).LengthHorizontal;
+            report.maxRange = EffectiveRange;
+            report.lightingShift = CE_Utility.GetLightingShift(Shooter, LightingTracker.CombatGlowAtFor(caster.Position, targetCell));
+
+            if (!caster.Position.Roofed(caster.Map) || !targetCell.Roofed(caster.Map))  //Change to more accurate algorithm?
+            {
+                report.weatherShift = 1 - caster.Map.weatherManager.CurWeatherAccuracyMultiplier;
+            }
+            report.shotSpeed = ShotSpeed;
+            report.swayDegrees = SwayAmplitudeFor(aimMode);
+            float spreadmult = projectilePropsCE != null ? projectilePropsCE.spreadMult : 0f;
+            report.spreadDegrees = (EquipmentSource?.GetStatValue(CE_StatDefOf.ShotSpread) ?? 0) * spreadmult;
+            return report;
         }
 
         /// <summary>
@@ -170,62 +300,143 @@ namespace CombatExtended
         /// </summary>
         public override bool CanHitTargetFrom(IntVec3 root, LocalTargetInfo targ)
         {
-            if (ShooterPawn != null && !ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Sight)) return false;
+            if (ShooterPawn != null && !ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Sight))
+            {
+                if (!ShooterPawn.health.capacities.CapableOf(PawnCapacityDefOf.Hearing))
+                {
+                    // blind and deaf;
+                    return false;
+                }
+                // blind but not deaf
+                float dist = targ.Cell.DistanceTo(root);
+                if (dist < 5f)
+                {
+                    return base.CanHitTargetFrom(root, targ);
+                }
+                Map map = ShooterPawn.Map;
+                LightingTracker tracker = map.GetLightingTracker();
+                float glow = tracker.GetGlowForCell(targ.Cell);
+                if (glow / dist < 0.1f)
+                {
+                    return false;
+                }
+            }
             return base.CanHitTargetFrom(root, targ);
         }
 
-        protected override bool TryCastShot()
+        public override void RecalculateWarmupTicks()
+        {
+            if (!Controller.settings.FasterRepeatShots)
+            {
+                return;
+            }
+            Vector3 u = caster.TrueCenter();
+            Vector3 v = currentTarget.Thing?.TrueCenter() ?? currentTarget.Cell.ToVector3Shifted();
+            if (currentTarget.Pawn is Pawn dtPawn)
+            {
+                v += dtPawn.Drawer.leaner.LeanOffset * 0.5f;
+            }
+
+            var d = v - u;
+            var newShotRotation = (-90 + Mathf.Rad2Deg * Mathf.Atan2(d.z, d.x)) % 360;
+            var delta = Mathf.Abs(newShotRotation - lastShotRotation) + lastRecoilDeg;
+            lastRecoilDeg = 0;
+            var maxReduction = storedShotReduction ?? (CompFireModes?.CurrentAimMode == AimMode.SuppressFire ?
+                                                       0.1f :
+                                                       (_isAiming ? 0.5f : 0.25f));
+            var reduction = Mathf.Max(maxReduction, delta / 45f);
+            storedShotReduction = reduction;
+
+            if (reduction < 1.0f)
+            {
+                if (caster is Building_TurretGunCE turret)
+                {
+                    if (turret.burstWarmupTicksLeft > 0)  //Turrets call beginBurst() when starting to fire a burst, and when starting the final aiming part of an aimed shot.  We only want apply changes to warmup.
+                    {
+                        turret.burstWarmupTicksLeft = (int)(turret.burstWarmupTicksLeft * reduction);
+                    }
+                }
+                else if (this.WarmupStance != null)
+                {
+                    this.WarmupStance.ticksLeft = (int)(this.WarmupStance.ticksLeft * reduction);
+                }
+            }
+
+        }
+
+        //For revolvers and break actions. Intended to be called by compammouser on reload
+        public void ExternalCallDropCasing(int randomSeedOffset = -1)
+        {
+            bool fromPawn = false;
+            GunDrawExtension ext = EquipmentSource?.def.GetModExtension<GunDrawExtension>();
+            if (ShooterPawn != null)
+            {
+                fromPawn = drawPos != Vector3.zero;
+            }
+            //No aim angle because casing eject happens when pawn lowers its gun to reload
+            CE_Utility.GenerateAmmoCasings(projectilePropsCE, fromPawn ? drawPos : caster.DrawPos, caster.Map, 0, VerbPropsCE.recoilAmount, fromPawn: fromPawn, extension: ext, randomSeedOffset);
+        }
+
+        public override bool TryCastShot()
         {
             //Reduce ammunition
             if (CompAmmo != null)
             {
-                if (!CompAmmo.TryReduceAmmoCount(VerbPropsCE.ammoConsumedPerShotCount))
+                if (!CompAmmo.TryReduceAmmoCount(((CompAmmo.Props.ammoSet != null) ? CompAmmo.Props.ammoSet.ammoConsumedPerShot : 1) * VerbPropsCE.ammoConsumedPerShotCount))
                 {
                     return false;
                 }
             }
             if (base.TryCastShot())
             {
-                //Required since Verb_Shoot does this but Verb_LaunchProjectileCE doesn't when calling base.TryCastShot() because Shoot isn't its base
-                if (ShooterPawn != null)
-                {
-                    ShooterPawn.records.Increment(RecordDefOf.ShotsFired);
-                }
-                //Drop casings
-                if (VerbPropsCE.ejectsCasings && projectilePropsCE.dropsCasings)
-                {
-                    CE_Utility.ThrowEmptyCasing(caster.DrawPos, caster.Map, ThingDef.Named(projectilePropsCE.casingMoteDefname));
-                }
-                // This needs to here for weapons without magazine to ensure their last shot plays sounds
-                if (CompAmmo != null && !CompAmmo.HasMagazine && CompAmmo.UseAmmo)
-                {
-                    if (!CompAmmo.Notify_ShotFired())
-                    {
-                        if (VerbPropsCE.muzzleFlashScale > 0.01f)
-                        {
-                            MoteMaker.MakeStaticMote(caster.Position, caster.Map, ThingDefOf.Mote_ShotFlash, VerbPropsCE.muzzleFlashScale);
-                        }
-                        if (VerbPropsCE.soundCast != null)
-                        {
-                            VerbPropsCE.soundCast.PlayOneShot(new TargetInfo(caster.Position, caster.Map));
-                        }
-                        if (VerbPropsCE.soundCastTail != null)
-                        {
-                            VerbPropsCE.soundCastTail.PlayOneShotOnCamera();
-                        }
-                        if (ShooterPawn != null)
-                        {
-                            if (ShooterPawn.thinker != null)
-                            {
-                                ShooterPawn.mindState.lastEngageTargetTick = Find.TickManager.TicksGame;
-                            }
-                        }
-                    }
-                    return CompAmmo.Notify_PostShotFired();
-                }
-                return true;
+                return OnCastSuccessful();
             }
             return false;
+        }
+        protected virtual bool OnCastSuccessful()
+        {
+            bool fromPawn = false;
+            GunDrawExtension ext = EquipmentSource?.def.GetModExtension<GunDrawExtension>();
+            //Required since Verb_Shoot does this but Verb_LaunchProjectileCE doesn't when calling base.TryCastShot() because Shoot isn't its base
+            if (ShooterPawn != null)
+            {
+                ShooterPawn.records.Increment(RecordDefOf.ShotsFired);
+                fromPawn = drawPos != Vector3.zero;
+            }
+
+            //Drop casings
+            if (VerbPropsCE.ejectsCasings && (!ext?.DropCasingWhenReload ?? true))
+            {
+                CE_Utility.GenerateAmmoCasings(projectilePropsCE, fromPawn ? drawPos : caster.DrawPos, caster.Map, AimAngle, VerbPropsCE.recoilAmount, fromPawn: fromPawn, extension: ext);
+            }
+            // This needs to here for weapons without magazine to ensure their last shot plays sounds
+            if (CompAmmo != null && !CompAmmo.HasMagazine && CompAmmo.UseAmmo)
+            {
+                if (!CompAmmo.Notify_ShotFired())
+                {
+                    if (VerbPropsCE.muzzleFlashScale > 0.01f)
+                    {
+                        FleckMakerCE.Static(caster.Position, caster.Map, FleckDefOf.ShotFlash, VerbPropsCE.muzzleFlashScale);
+                    }
+                    if (VerbPropsCE.soundCast != null)
+                    {
+                        VerbPropsCE.soundCast.PlayOneShot(new TargetInfo(caster.Position, caster.Map));
+                    }
+                    if (VerbPropsCE.soundCastTail != null)
+                    {
+                        VerbPropsCE.soundCastTail.PlayOneShotOnCamera();
+                    }
+                    if (ShooterPawn != null)
+                    {
+                        if (ShooterPawn.thinker != null)
+                        {
+                            ShooterPawn.mindState.lastEngageTargetTick = Find.TickManager.TicksGame;
+                        }
+                    }
+                }
+                return CompAmmo.Notify_PostShotFired();
+            }
+            return true;
         }
         #endregion
     }

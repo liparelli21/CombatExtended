@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <Patch>
 
 	<!-- ========== Base Hare ========== -->
@@ -9,6 +9,7 @@
 			<MoveSpeed>4.8</MoveSpeed>
 			<MeleeDodgeChance>0.24</MeleeDodgeChance>
 			<MeleeCritChance>0.02</MeleeCritChance>
+			<MeleeParryChance>0</MeleeParryChance>
 		</value>
 	</Operation>
 
@@ -23,7 +24,7 @@
 					<power>3</power>
 					<cooldownTime>1.26</cooldownTime>
 					<linkedBodyPartsGroup>Teeth</linkedBodyPartsGroup>
-					<armorPenetrationSharp>0.01</armorPenetrationSharp>					
+					<armorPenetrationSharp>0.01</armorPenetrationSharp>
 					<armorPenetrationBlunt>0.250</armorPenetrationBlunt>
 				</li>
 				<li Class="CombatExtended.ToolCE">
@@ -41,13 +42,6 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/ThingDef[@Name="BaseHare"]/race/baseHealthScale</xpath>
-		<value>
-			<baseHealthScale>0.15</baseHealthScale>
-		</value>
-	</Operation>
-
 	<Operation Class="PatchOperationAddModExtension">
 		<xpath>Defs/ThingDef[@Name="BaseHare"]</xpath>
 		<value>
@@ -57,12 +51,4 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[@Name="HareBase"]/combatPower</xpath>
-		<value>
-			<combatPower>10</combatPower>
-		</value>
-	</Operation>
-
 </Patch>
-

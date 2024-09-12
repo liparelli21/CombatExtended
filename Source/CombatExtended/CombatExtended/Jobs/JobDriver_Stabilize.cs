@@ -1,11 +1,8 @@
-﻿using System;
+﻿using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using RimWorld;
 using Verse;
 using Verse.AI;
-using UnityEngine;
 
 namespace CombatExtended
 {
@@ -13,24 +10,59 @@ namespace CombatExtended
     {
         private const float baseTendDuration = 60f;
 
-        private Pawn Patient { get { return pawn.CurJob.targetA.Thing as Pawn; } }
-        private Medicine Medicine { get { return pawn.CurJob.targetB.Thing as Medicine; } }
+        private Pawn Patient
+        {
+            get
+            {
+                return pawn.CurJob.targetA.Thing as Pawn;
+            }
+        }
+        private Medicine Medicine
+        {
+            get
+            {
+                return pawn.CurJob.targetB.Thing as Medicine;
+            }
+        }
 
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
             return pawn.Reserve(TargetA, job) && pawn.Reserve(TargetB, job);
         }
 
-        protected override IEnumerable<Toil> MakeNewToils()
+        public void MakeMedicineFilth(Medicine medicine)
+        {
+            var medExt = medicine.def.GetModExtension<MedicineFilthExtension>() ?? new MedicineFilthExtension();
+
+            if (medExt.filthDefName != null && Rand.Chance(medExt.filthSpawnChance))
+            {
+                int filthQuantity = medExt.filthSpawnQuantity.RandomInRange;
+                List<IntVec3> list = GenAdj.AdjacentCells8WayRandomized();
+                for (int i = 0; i < filthQuantity; i++)
+                {
+                    IntVec3 cell = this.pawn.Position + list[i];
+                    if (cell.InBounds(this.pawn.Map))
+                    {
+                        FilthMaker.TryMakeFilth(cell, this.pawn.Map, medExt.filthDefName);
+                    }
+                }
+            }
+        }
+
+        public override IEnumerable<Toil> MakeNewToils()
         {
             this.FailOn(() => Patient == null || Medicine == null);
             this.FailOnDespawnedNullOrForbidden(TargetIndex.A);
             this.FailOnDestroyedNullOrForbidden(TargetIndex.B);
             this.FailOnNotDowned(TargetIndex.A);
-            this.AddEndCondition(delegate 
+            this.AddEndCondition(delegate
             {
-                if (Patient.health.hediffSet.GetHediffsTendable().Any(h => h.CanBeStabilized())) return JobCondition.Ongoing;
+                if (Patient.health.hediffSet.GetHediffsTendable().Any(h => h.CanBeStabilized()))
+                {
+                    return JobCondition.Ongoing;
+                }
                 Medicine.Destroy();
+                MakeMedicineFilth(Medicine);
                 return JobCondition.Incompletable;
             });
 
@@ -49,7 +81,7 @@ namespace CombatExtended
             {
                 float xp = (!Patient.RaceProps.Animal) ? 125f : 50f * Medicine.def.MedicineTendXpGainFactor;
                 pawn.skills.Learn(SkillDefOf.Medicine, xp);
-                foreach(Hediff curInjury in from x in Patient.health.hediffSet.GetHediffsTendable() orderby x.BleedRate descending select x)
+                foreach (Hediff curInjury in from x in Patient.health.hediffSet.GetHediffsTendable() orderby x.BleedRate descending select x)
                 {
                     if (curInjury.CanBeStabilized())
                     {
@@ -58,7 +90,9 @@ namespace CombatExtended
                         break;
                     }
                 }
+
             };
+
             stabilizeToil.defaultCompleteMode = ToilCompleteMode.Instant;
             yield return stabilizeToil;
             yield return Toils_Jump.Jump(waitToil);

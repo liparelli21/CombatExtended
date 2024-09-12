@@ -18,19 +18,32 @@ namespace CombatExtended
         {
             if (!shieldCoverage.NullOrEmpty())
             {
-                foreach(BodyPartGroupDef group in shieldCoverage)
+                foreach (BodyPartGroupDef group in shieldCoverage)
                 {
-                    if (part.IsInGroup(group)) return true;
+                    if (part.IsInGroup(group))
+                    {
+                        return true;
+                    }
                 }
             }
             if (!crouchCoverage.NullOrEmpty() && pawn.IsCrouching())
             {
-                foreach(BodyPartGroupDef group in crouchCoverage)
+                foreach (BodyPartGroupDef group in crouchCoverage)
                 {
-                    if (part.IsInGroup(group)) return true;
+                    if (part.IsInGroup(group))
+                    {
+                        return true;
+                    }
                 }
             }
             return false;
+        }
+        public static string GetShieldProtectedAreas(BodyDef body, ThingDef thingDef)
+        {
+            return (from part in (from x in body.AllParts
+                                  where x.depth == BodyPartDepth.Outside && x.groups.Any((BodyPartGroupDef y) => thingDef.GetModExtension<ShieldDefExtension>().shieldCoverage.Contains(y))
+                                  select x).Distinct<BodyPartRecord>()
+                    select part.Label).ToCommaList(false, false).CapitalizeFirst();
         }
     }
 }

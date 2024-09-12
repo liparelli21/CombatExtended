@@ -18,7 +18,9 @@ namespace CombatExtended
             var def = req.Def as ThingDef;
 
             if (def?.building?.IsTurret ?? false)
+            {
                 def = def.building.turretGunDef;
+            }
 
             return def;
         }
@@ -30,7 +32,10 @@ namespace CombatExtended
 
         public override bool ShouldShowFor(StatRequest req)
         {
-            if (!base.ShouldShowFor(req)) return false;
+            if (!base.ShouldShowFor(req))
+            {
+                return false;
+            }
 
             AmmoSetDef ammoSet = GunDef(req)?.GetCompProperties<CompProperties_AmmoUser>()?.ammoSet;
             if (ShouldDisplayAmmoSet(ammoSet))
@@ -63,7 +68,13 @@ namespace CombatExtended
             if (ShouldDisplayAmmoSet(ammoSet))
             {
                 // Append various ammo stats
-                stringBuilder.AppendLine(ammoSet.LabelCap + "\n");
+                stringBuilder.AppendLine(ammoSet.LabelCap);
+                var multiplier = Gun(req)?.GetStatValue(StatDefOf.RangedWeapon_DamageMultiplier) ?? 1f;
+                if (Mathf.Abs(1f - multiplier) > 0.0001f)
+                {
+                    stringBuilder.AppendLine("CE_RangedQualityMultiplier".Translate() + ": " + multiplier.ToStringByStyle(ToStringStyle.PercentOne));
+                }
+                stringBuilder.AppendLine();
                 foreach (var cur in ammoSet.ammoTypes)
                 {
                     string label = string.IsNullOrEmpty(cur.ammo.ammoClass.LabelCapShort) ? (string)cur.ammo.ammoClass.LabelCap : cur.ammo.ammoClass.LabelCapShort;
@@ -75,7 +86,9 @@ namespace CombatExtended
                 var projectiles = GunDef(req)?.Verbs?.Where(x => x.defaultProjectile != null).Select(x => x.defaultProjectile);
 
                 foreach (var cur in projectiles)
+                {
                     stringBuilder.AppendLine(cur.LabelCap + ":\n" + cur.GetProjectileReadout(Gun(req)));
+                }
             }
 
             return stringBuilder.ToString().TrimEndNewlines();

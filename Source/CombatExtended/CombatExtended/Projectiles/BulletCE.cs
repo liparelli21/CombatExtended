@@ -8,6 +8,7 @@ using Verse.Sound;
 using RimWorld;
 using UnityEngine;
 using HarmonyLib;
+using CombatExtended.AI;
 
 namespace CombatExtended
 {
@@ -16,47 +17,46 @@ namespace CombatExtended
         private static RulePackDef cookOffDamageEvent = null;
 
         public static RulePackDef CookOff => cookOffDamageEvent ?? (cookOffDamageEvent = DefDatabase<RulePackDef>.GetNamed("DamageEvent_CookOff"));
-	protected virtual float DamageAmount
-	{
-	    get {
-		return def.projectile.GetDamageAmount(1);
-	    }
-	}
+        private static RulePackDef shellingDamageEvent = null;
 
-	protected virtual float PenetrationAmount
-	{
-	    get
-	    {
-		var projectilePropsCE = (ProjectilePropertiesCE)def.projectile;
-		var isSharpDmg = def.projectile.damageDef.armorCategory == DamageArmorCategoryDefOf.Sharp;
-		return isSharpDmg ? projectilePropsCE.armorPenetrationSharp : projectilePropsCE.armorPenetrationBlunt;
-	    }
-	}
+        public static RulePackDef Shelling => shellingDamageEvent ?? (shellingDamageEvent = DefDatabase<RulePackDef>.GetNamed("DamageEvent_Shelling"));
+
+        public virtual float PenetrationAmount
+        {
+            get
+            {
+                var projectilePropsCE = (ProjectilePropertiesCE)def.projectile;
+                var isSharpDmg = def.projectile.damageDef.armorCategory == DamageArmorCategoryDefOf.Sharp;
+                return (equipment?.GetStatValue(StatDefOf.RangedWeapon_DamageMultiplier) ?? 1f) * (isSharpDmg ? projectilePropsCE.armorPenetrationSharp : projectilePropsCE.armorPenetrationBlunt);
+            }
+        }
 
         private void LogImpact(Thing hitThing, out LogEntry_DamageResult logEntry)
         {
             var ed = equipmentDef ?? ThingDef.Named("Gun_Autopistol");
             logEntry =
                 new BattleLogEntry_RangedImpact(
-                    launcher,
-                    hitThing,
-                    intendedTarget,
-                    ed,
-                    def,
-                    null //CoverDef Missing!
-                    );
+                launcher,
+                hitThing,
+                intendedTargetThing,
+                ed,
+                def,
+                null //CoverDef Missing!
+            );
             if (!(launcher is AmmoThing))
+            {
                 Find.BattleLog.Add(logEntry);
+            }
         }
 
-        protected override void Impact(Thing hitThing)
+        public override void Impact(Thing hitThing)
         {
             bool cookOff = (launcher is AmmoThing);
 
             Map map = base.Map;
             LogEntry_DamageResult logEntry = null;
 
-            if (!cookOff && (logMisses || hitThing is Pawn || hitThing is Building_Turret))
+            if (!cookOff && launcher != null && (logMisses || hitThing is Pawn || hitThing is Building_Turret))
             {
                 LogImpact(hitThing, out logEntry);
             }
@@ -64,26 +64,30 @@ namespace CombatExtended
             if (hitThing != null)
             {
                 // launcher being the pawn equipping the weapon, not the weapon itself
-	      float damageAmountBase = DamageAmount;
-	      var projectilePropsCE = (ProjectilePropertiesCE)def.projectile;
-	      var isSharpDmg = def.projectile.damageDef.armorCategory == DamageArmorCategoryDefOf.Sharp;
-              var penetration = PenetrationAmount;
-	      var damDefCE = def.projectile.damageDef.GetModExtension<DamageDefExtensionCE>() ?? new DamageDefExtensionCE();
-	      var dinfo = new DamageInfo(
+                float damageAmountBase = DamageAmount;
+                var projectilePropsCE = (ProjectilePropertiesCE)def.projectile;
+                var isSharpDmg = def.projectile.damageDef.armorCategory == DamageArmorCategoryDefOf.Sharp;
+                var penetration = PenetrationAmount;
+                var damDefCE = def.projectile.damageDef.GetModExtension<DamageDefExtensionCE>() ?? new DamageDefExtensionCE();
+                var dinfo = new DamageInfo(
                     def.projectile.damageDef,
                     damageAmountBase,
                     penetration, //Armor Penetration
                     ExactRotation.eulerAngles.y,
                     launcher,
                     null,
-                    def);
+                    def,
+                    instigatorGuilty: InstigatorGuilty);
 
                 // Set impact height
                 BodyPartDepth partDepth = damDefCE.harmOnlyOutsideLayers ? BodyPartDepth.Outside : BodyPartDepth.Undefined;
                 //NOTE: ExactPosition.y isn't always Height at the point of Impact!
                 BodyPartHeight partHeight = new CollisionVertical(hitThing).GetCollisionBodyHeight(ExactPosition.y);
                 dinfo.SetBodyRegion(partHeight, partDepth);
-                if (damDefCE.harmOnlyOutsideLayers) dinfo.SetBodyRegion(BodyPartHeight.Undefined, BodyPartDepth.Outside);
+                if (damDefCE.harmOnlyOutsideLayers)
+                {
+                    dinfo.SetBodyRegion(BodyPartHeight.Undefined, BodyPartDepth.Outside);
+                }
 
                 //The following code excludes turrets etcetera from having cook off projectile impacts recorded in their combat log.
                 //If it is necessary to add cook off to turret logs, a new BattleLogEntry_ must be created, because BattleLogEntry_DamageTaken,
@@ -92,24 +96,38 @@ namespace CombatExtended
                 {
                     logEntry =
                         new BattleLogEntry_DamageTaken(
-                            hitPawn,
-                            CookOff
-                            );
+                        hitPawn,
+                        CookOff
+                    );
                     Find.BattleLog.Add(logEntry);
                 }
-
+                if (launcher == null && hitThing is Pawn hitPawn1)
+                {
+                    logEntry =
+                        new BattleLogEntry_DamageTaken(
+                        hitPawn1,
+                        Shelling
+                    );
+                    Find.BattleLog.Add(logEntry);
+                }
                 try
                 {
                     // Apply primary damage
-                    hitThing.TakeDamage(dinfo).AssociateWithLog(logEntry);
-
+                    var result = hitThing.TakeDamage(dinfo);
+                    if (launcher != null)
+                    {
+                        result.AssociateWithLog(logEntry);
+                    }
                     // Apply secondary to non-pawns (pawn secondary damage is handled in the damage worker)
                     // The !(hitThing is Pawn) already excludes non-pawn cookoff projectiles from being logged, as logEntry == null
                     if (!(hitThing is Pawn) && projectilePropsCE != null && !projectilePropsCE.secondaryDamage.NullOrEmpty())
                     {
                         foreach (SecondaryDamage cur in projectilePropsCE.secondaryDamage)
                         {
-                            if (hitThing.Destroyed || !Rand.Chance(cur.chance)) break;
+                            if (hitThing.Destroyed || !Rand.Chance(cur.chance))
+                            {
+                                break;
+                            }
 
                             var secDinfo = cur.GetDinfo(dinfo);
                             hitThing.TakeDamage(secDinfo).AssociateWithLog(logEntry);
@@ -118,7 +136,9 @@ namespace CombatExtended
                 }
                 catch (Exception e)
                 {
-                    Log.Error("CombatExtended :: BulletCE impacting thing " + hitThing.LabelCap + " of def " + hitThing.def.LabelCap + " added by mod " + hitThing.def.modContentPack.Name + ". See following stacktrace for information.");
+                    // Log errors from the impact process with additional diagnostic context before rethrowing
+                    // for easier identification of the problematic projectiles in larger firefights
+                    Log.Error($"CombatExtended :: BulletCE impacting thing {hitThing.LabelCap} of def {hitThing.def.LabelCap} added by mod {hitThing.def.modContentPack.Name}.\n{e}");
                     throw e;
                 }
                 finally
@@ -133,11 +153,13 @@ namespace CombatExtended
                 //Only display a dirt/water hit for projectiles with a dropshadow
                 if (base.castShadow)
                 {
-                    MoteMaker.MakeStaticMote(this.ExactPosition, map, ThingDefOf.Mote_ShotHit_Dirt, 1f);
+                    Rand.PushState();
+                    FleckMaker.Static(this.ExactPosition, map, FleckDefOf.ShotHit_Dirt, 1f);
                     if (base.Position.GetTerrain(map).takeSplashes)
                     {
-                        MoteMaker.MakeWaterSplash(this.ExactPosition, map, Mathf.Sqrt(def.projectile.GetDamageAmount(this.launcher)) * 1f, 4f);
+                        FleckMaker.WaterSplash(this.ExactPosition, map, Mathf.Sqrt(DamageAmount), 4f);
                     }
+                    Rand.PopState();
                 }
                 base.Impact(null);
             }
@@ -170,6 +192,10 @@ namespace CombatExtended
                         {
                             thingList[j].Notify_BulletImpactNearby(impactData);
                         }
+                        if (thingList[j] is Pawn pawn)
+                        {
+                            pawn.GetTacticalManager()?.Notify_BulletImpactNearby();
+                        }
                     }
                 }
             }
@@ -180,18 +206,15 @@ namespace CombatExtended
          * Current users are SmokepopBelt and BroadshieldPack, requiring bullet.def and bullet.Launcher.
          */
 
-        // todo: remove when moved to publicised assembly
-        private static readonly FieldInfo bulletLauncher = typeof(Bullet).GetField("launcher", BindingFlags.Instance | BindingFlags.NonPublic);
-
         private Bullet GenerateVanillaBullet()
         {
             var bullet = new Bullet
             {
                 def = this.def,
-                intendedTarget = this.intendedTarget,
+                intendedTarget = this.intendedTargetThing,
             };
 
-            bulletLauncher.SetValue(bullet, this.launcher);  //Bad for performance, refactor if a more efficient solution is possible
+            bullet.launcher = launcher;
             return bullet;
         }
 

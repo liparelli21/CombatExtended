@@ -10,11 +10,12 @@ using Verse.Sound;
 using UnityEngine;
 using CombatExtended.CombatExtended.LoggerUtils;
 using CombatExtended.CombatExtended.Jobs.Utils;
+using RimWorld.Planet;
 
 namespace CombatExtended
 {
     /* Class is cloned from Building_TurretGun with various changes made to support fire modes and ammo
-     * 
+     *
      * Unmodified methods should be kept up-to-date with vanilla class so long as they don't conflict with changes made. Please mark any changes you make from vanilla.
      * -NIA
      */
@@ -30,47 +31,49 @@ namespace CombatExtended
 
         #region Fields
 
-        protected int burstCooldownTicksLeft;
+        public int burstCooldownTicksLeft;
         public int burstWarmupTicksLeft;                                // Need this public so aim mode can modify it
-        protected LocalTargetInfo currentTargetInt = LocalTargetInfo.Invalid;
-        private bool holdFire;
+        public LocalTargetInfo currentTargetInt = LocalTargetInfo.Invalid;
+        protected bool holdFire;
         private Thing gunInt;                                           // Better to be private, because Gun is used for access, instead
-        protected TurretTop top;
-        protected CompPowerTrader powerComp;
-        protected CompCanBeDormant dormantComp;
-        protected CompInitiatable initiatableComp;
-        protected CompMannable mannableComp;
+        public TurretTop top;
+        public CompPowerTrader powerComp;
+        public CompCanBeDormant dormantComp;
+        public CompInitiatable initiatableComp;
+        public CompMannable mannableComp;
 
         public static Material ForcedTargetLineMat = MaterialPool.MatFrom(GenDraw.LineTexPath, ShaderDatabase.Transparent, new Color(1f, 0.5f, 0.5f));
 
         // New fields
+        public bool targetingWorldMap = false;
         private CompAmmoUser compAmmo = null;
         private CompFireModes compFireModes = null;
         private CompChangeableProjectile compChangeable = null;
         public bool isReloading = false;
         private int ticksUntilAutoReload = 0;
         private bool everSpawned = false;
+        public GlobalTargetInfo globalTargetInfo = GlobalTargetInfo.Invalid;
 
         #endregion
 
         #region Properties
         // Core properties
-        public bool Active => (powerComp == null || powerComp.PowerOn) && (dormantComp == null || dormantComp.Awake) && (initiatableComp == null || initiatableComp.Initiated);
+        public virtual bool Active => (powerComp == null || powerComp.PowerOn) && (dormantComp == null || dormantComp.Awake) && (initiatableComp == null || initiatableComp.Initiated);
         public CompEquippable GunCompEq => Gun.TryGetComp<CompEquippable>();
         public override LocalTargetInfo CurrentTarget => currentTargetInt;
-        private bool WarmingUp => burstWarmupTicksLeft > 0;
+        protected bool WarmingUp => burstWarmupTicksLeft > 0;
         public override Verb AttackVerb => Gun == null ? null : GunCompEq.verbTracker.PrimaryVerb;
         public bool IsMannable => mannableComp != null;
         public bool PlayerControlled => (Faction == Faction.OfPlayer || MannedByColonist) && !MannedByNonColonist;
-        private bool CanSetForcedTarget => mannableComp != null && PlayerControlled;
-        private bool CanToggleHoldFire => PlayerControlled;
-        private bool IsMortar => def.building.IsMortar;
-        private bool IsMortarOrProjectileFliesOverhead => Projectile.projectile.flyOverhead || IsMortar;
+        protected virtual bool CanSetForcedTarget => mannableComp != null && PlayerControlled;
+        protected bool CanToggleHoldFire => PlayerControlled;
+        public bool IsMortar => def.building.IsMortar;
+        public bool IsMortarOrProjectileFliesOverhead => Projectile.projectile.flyOverhead || IsMortar;
         //Not included: CanExtractShell
         private bool MannedByColonist => mannableComp != null && mannableComp.ManningPawn != null
-            && mannableComp.ManningPawn.Faction == Faction.OfPlayer;
+        && mannableComp.ManningPawn.Faction == Faction.OfPlayer;
         private bool MannedByNonColonist => mannableComp != null && mannableComp.ManningPawn != null
-            && mannableComp.ManningPawn.Faction != Faction.OfPlayer;
+        && mannableComp.ManningPawn.Faction != Faction.OfPlayer;
 
         // New properties
         public Thing Gun
@@ -92,7 +95,8 @@ namespace CombatExtended
                 return this.gunInt;
             }
         }
-        public ThingDef Projectile
+
+        public virtual ThingDef Projectile
         {
             get
             {
@@ -107,34 +111,47 @@ namespace CombatExtended
                 return this.GunCompEq.PrimaryVerb.verbProps.defaultProjectile;
             }
         }
+
         public CompChangeableProjectile CompChangeable
         {
             get
             {
-                if (compChangeable == null && Gun != null) compChangeable = Gun.TryGetComp<CompChangeableProjectile>();
+                if (compChangeable == null && Gun != null)
+                {
+                    compChangeable = Gun.TryGetComp<CompChangeableProjectile>();
+                }
                 return compChangeable;
             }
         }
+
         public CompAmmoUser CompAmmo
         {
             get
             {
-                if (compAmmo == null && Gun != null) compAmmo = Gun.TryGetComp<CompAmmoUser>();
+                if (compAmmo == null && Gun != null)
+                {
+                    compAmmo = Gun.TryGetComp<CompAmmoUser>();
+                }
                 return compAmmo;
             }
         }
+
         public CompFireModes CompFireModes
         {
             get
             {
-                if (compFireModes == null && Gun != null) compFireModes = Gun.TryGetComp<CompFireModes>();
+                if (compFireModes == null && Gun != null)
+                {
+                    compFireModes = Gun.TryGetComp<CompFireModes>();
+                }
                 return compFireModes;
             }
         }
-
+        private ProjectilePropertiesCE ProjectileProps => (ProjectilePropertiesCE)compAmmo?.CurAmmoProjectile?.projectile ?? null;
+        public float MaxWorldRange => ProjectileProps?.shellingProps.range ?? -1f;
         public bool EmptyMagazine => CompAmmo?.EmptyMagazine ?? false;
         public bool FullMagazine => CompAmmo?.FullMagazine ?? false;
-        public bool AutoReloadableMagazine => AutoReloadableNow && CompAmmo.CurMagCount <= Mathf.CeilToInt(CompAmmo.Props.magazineSize / 6);
+        public bool AutoReloadableMagazine => AutoReloadableNow && CompAmmo.CurMagCount <= Mathf.CeilToInt(CompAmmo.MagSize / 6);
         public bool AutoReloadableNow => (mannableComp == null || (!mannableComp.MannedNow && ticksUntilAutoReload == 0)) && Reloadable;    //suppress manned turret auto-reload for a short time after spawning
         public bool Reloadable => CompAmmo?.HasMagazine ?? false;
         public CompMannable MannableComp => mannableComp;
@@ -171,7 +188,9 @@ namespace CombatExtended
 
                 //Delay auto-reload for a few seconds after spawn, so player can operate the turret right after placing it, before other colonists start reserving it for reload jobs
                 if (mannableComp != null)
+                {
                     ticksUntilAutoReload = minTicksBeforeAutoReload;
+                }
             }
 
             // if (CompAmmo == null || CompAmmo.Props == null || CompAmmo.Props.ammoSet == null || CompAmmo.Props.ammoSet.ammoTypes.NullOrEmpty())
@@ -196,7 +215,6 @@ namespace CombatExtended
         public override void PostMake()
         {
             base.PostMake();
-
             MakeGun();
         }
 
@@ -215,12 +233,11 @@ namespace CombatExtended
             ResetCurrentTarget();
         }
 
-
         public override void ExposeData()           // Added new variables, removed bool loaded (not used in CE)
         {
             base.ExposeData();
 
-            // New variables
+            // New variables                        
             Scribe_Deep.Look(ref gunInt, "gunInt");
             InitGun();
             Scribe_Values.Look(ref isReloading, "isReloading", false);
@@ -231,17 +248,24 @@ namespace CombatExtended
             Scribe_Values.Look<int>(ref this.burstWarmupTicksLeft, "burstWarmupTicksLeft", 0, false);
             Scribe_TargetInfo.Look(ref this.currentTargetInt, "currentTarget");
             Scribe_Values.Look<bool>(ref this.holdFire, "holdFire", false, false);
-	    Scribe_Values.Look<bool>(ref this.everSpawned, "everSpawned", false, false);
+            Scribe_Values.Look<bool>(ref this.everSpawned, "everSpawned", false, false);
+
+            Scribe_TargetInfo.Look(ref globalTargetInfo, "globalSourceInfo");
             BackCompatibility.PostExposeData(this);
         }
 
-        public override bool ClaimableBy(Faction by)        // Core method
+        public override bool ClaimableBy(Faction by, StringBuilder reason = null)        // Core method
         {
-            return base.ClaimableBy(by) && (this.mannableComp == null || this.mannableComp.ManningPawn == null) && (!this.Active || this.mannableComp != null) && (((this.dormantComp == null || this.dormantComp.Awake) && (this.initiatableComp == null || this.initiatableComp.Initiated)) || (this.powerComp != null && !this.powerComp.PowerOn));
+            return base.ClaimableBy(by, reason) && (this.mannableComp == null || this.mannableComp.ManningPawn == null) && (!this.Active || this.mannableComp != null) && (((this.dormantComp == null || this.dormantComp.Awake) && (this.initiatableComp == null || this.initiatableComp.Initiated)) || (this.powerComp != null && !this.powerComp.PowerOn));
         }
 
+        [Compatibility.Multiplayer.SyncMethod]
         public override void OrderAttack(LocalTargetInfo targ)      // Core method
         {
+            if (globalTargetInfo.IsValid)
+            {
+                this.ResetForcedTarget();
+            }
             if (!targ.IsValid)
             {
                 if (this.forcedTarget.IsValid)
@@ -277,17 +301,27 @@ namespace CombatExtended
         public override void Tick()     //Autoreload code and IsReloading check
         {
             base.Tick();
-            if (ticksUntilAutoReload > 0) ticksUntilAutoReload--;   // Reduce time until we can auto-reload
-
-            if (!isReloading && this.IsHashIntervalTick(TicksBetweenAmmoChecks) && (MannableComp?.MannedNow ?? false))
+            if (ticksUntilAutoReload > 0)
             {
-                TryOrderReload();
+                ticksUntilAutoReload--;    // Reduce time until we can auto-reload
+            }
+
+            if (!isReloading && this.IsHashIntervalTick(TicksBetweenAmmoChecks))
+            {
+                if (MannableComp?.MannedNow ?? false)
+                {
+                    TryOrderReload();
+                }
+                else
+                {
+                    TryReloadViaAutoLoader();
+                }
             }
 
             //This code runs TryOrderReload for manning pawns or for non-humanlike intelligence such as mechs
             /*if (this.IsHashIntervalTick(TicksBetweenAmmoChecks) && !isReloading && (MannableComp?.MannedNow ?? false))
                   TryOrderReload(CompAmmo?.CurMagCount == 0);*/
-            if (!CanSetForcedTarget && !isReloading && forcedTarget.IsValid && burstCooldownTicksLeft <= 0)
+            if (!CanSetForcedTarget && !isReloading && forcedTarget.IsValid && !globalTargetInfo.IsValid && burstCooldownTicksLeft <= 0)
             {
                 ResetForcedTarget();
             }
@@ -302,7 +336,7 @@ namespace CombatExtended
             if (Active && (this.mannableComp == null || this.mannableComp.MannedNow) && base.Spawned && !(isReloading && WarmingUp))
             {
                 this.GunCompEq.verbTracker.VerbsTick();
-                if (!this.stunner.Stunned && this.GunCompEq.PrimaryVerb.state != VerbState.Bursting)
+                if (!IsStunned && this.GunCompEq.PrimaryVerb.state != VerbState.Bursting)
                 {
                     if (this.WarmingUp)
                     {
@@ -333,14 +367,14 @@ namespace CombatExtended
             }
         }
 
-        protected void TryStartShootSomething(bool canBeginBurstImmediately)    // Added ammo check and use verb warmup time instead of turret's
+        public virtual void TryStartShootSomething(bool canBeginBurstImmediately)    // Added ammo check and use verb warmup time instead of turret's
         {
             // Check for ammo first
             if (!Spawned
-                || (holdFire && CanToggleHoldFire)
-                || (Projectile.projectile.flyOverhead && Map.roofGrid.Roofed(Position))
-                //|| !AttackVerb.Available()  -- Check replaced by the following:
-                || (CompAmmo != null && (isReloading || (mannableComp == null && CompAmmo.CurMagCount <= 0))))
+                    || (holdFire && CanToggleHoldFire)
+                    || (Projectile.projectile.flyOverhead && Map.roofGrid.Roofed(Position))
+                    //|| !AttackVerb.Available()  -- Check replaced by the following:
+                    || (CompAmmo != null && (isReloading || (mannableComp == null && CompAmmo.CurMagCount <= 0))))
             {
                 ResetCurrentTarget();
                 return;
@@ -352,13 +386,13 @@ namespace CombatExtended
                 TryOrderReload();
                 return;
             }
-            bool isValid = currentTargetInt.IsValid;
+            bool isValid = currentTargetInt.IsValid || globalTargetInfo.IsValid;
             currentTargetInt = forcedTarget.IsValid ? forcedTarget : TryFindNewTarget();
-            if (!isValid && currentTargetInt.IsValid)
+            if (!isValid && (currentTargetInt.IsValid || targetingWorldMap))
             {
                 SoundDefOf.TurretAcquireTarget.PlayOneShot(new TargetInfo(Position, Map, false));
             }
-            if (!currentTargetInt.IsValid)
+            if (!targetingWorldMap && !currentTargetInt.IsValid)
             {
                 ResetCurrentTarget();
                 return;
@@ -369,6 +403,12 @@ namespace CombatExtended
                 burstWarmupTicksLeft = AttackVerb.verbProps.warmupTime.SecondsToTicks();
                 return;
             }
+            if (targetingWorldMap && (!globalTargetInfo.IsValid || globalTargetInfo.WorldObject is DestroyedSettlement))
+            {
+                ResetForcedTarget();
+                ResetCurrentTarget();
+                return;
+            }
             if (canBeginBurstImmediately)
             {
                 BeginBurst();
@@ -377,32 +417,45 @@ namespace CombatExtended
             burstWarmupTicksLeft = 1;
         }
 
-        protected LocalTargetInfo TryFindNewTarget()    // Core method
+        public virtual LocalTargetInfo TryFindNewTarget()    // Core method
         {
             IAttackTargetSearcher attackTargetSearcher = this.TargSearcher();
             Faction faction = attackTargetSearcher.Thing.Faction;
             float range = this.AttackVerb.verbProps.range;
             Building t;
             if (Rand.Value < 0.5f && this.AttackVerb.ProjectileFliesOverhead() && faction.HostileTo(Faction.OfPlayer) && base.Map.listerBuildings.allBuildingsColonist.Where(delegate (Building x)
-            {
-                float num = this.AttackVerb.verbProps.EffectiveMinRange(x, this);
-                float num2 = (float)x.Position.DistanceToSquared(this.Position);
-                return num2 > num * num && num2 < range * range;
-            }).TryRandomElement(out t))
+        {
+            float num = this.AttackVerb.verbProps.EffectiveMinRange(x, this);
+            float num2 = (float)x.Position.DistanceToSquared(this.Position);
+            return num2 > num * num && num2 < range * range;
+        }).TryRandomElement(out t))
             {
                 return t;
             }
             TargetScanFlags targetScanFlags = TargetScanFlags.NeedThreat;
-            if (!this.AttackVerb.ProjectileFliesOverhead())
+            if (!Projectile.projectile.flyOverhead)
             {
                 targetScanFlags |= TargetScanFlags.NeedLOSToAll;
                 targetScanFlags |= TargetScanFlags.LOSBlockableByGas;
             }
-            if (this.AttackVerb.IsIncendiary())
+            else
+            {
+                targetScanFlags |= TargetScanFlags.NeedNotUnderThickRoof;
+            }
+
+            if (this.AttackVerb.IsIncendiary_Ranged())
             {
                 targetScanFlags |= TargetScanFlags.NeedNonBurning;
             }
-            return (Thing)AttackTargetFinder.BestShootTargetFromCurrentPosition(attackTargetSearcher, targetScanFlags, new Predicate<Thing>(this.IsValidTarget), 0f, 9999f);
+            return (Thing)AttackTargetFinder.BestShootTargetFromCurrentPosition(
+                       attackTargetSearcher,
+                       targetScanFlags,
+                       this.IsValidTarget,
+                       minDistance: 0f,
+                       // Only consider targets within the maximum range of this turret
+                       // to avoid iterating over potential targets that it can't reach.
+                       maxDistance: range
+                   );
         }
 
         private IAttackTargetSearcher TargSearcher()    // Core method
@@ -414,20 +467,11 @@ namespace CombatExtended
             return this;
         }
 
-        private bool IsValidTarget(Thing t)             // Projectile flyoverhead check instead of verb
+        private bool IsValidTarget(Thing t)
         {
             Pawn pawn = t as Pawn;
             if (pawn != null)
             {
-                //if (this.GunCompEq.PrimaryVerb.verbProps.projectileDef.projectile.flyOverhead)
-                if (Projectile.projectile.flyOverhead)
-                {
-                    RoofDef roofDef = base.Map.roofGrid.RoofAt(t.Position);
-                    if (roofDef != null && roofDef.isThickRoof)
-                    {
-                        return false;
-                    }
-                }
                 if (this.mannableComp == null)
                 {
                     return !GenAI.MachinesLike(base.Faction, pawn);
@@ -440,14 +484,35 @@ namespace CombatExtended
             return true;
         }
 
-        protected void BeginBurst()                     // Added handling for ticksUntilAutoReload
+        public virtual void BeginBurst()                     // Added handling for ticksUntilAutoReload
         {
             ticksUntilAutoReload = minTicksBeforeAutoReload;
-            AttackVerb.TryStartCastOn(CurrentTarget, false, true);
+            if (AttackVerb is Verb_ShootMortarCE shootMortar)
+            {
+                if (globalTargetInfo.IsValid)
+                {
+                    targetingWorldMap = true;
+                    GlobalTargetInfo sourceInfo = new GlobalTargetInfo();
+                    sourceInfo.tileInt = Map.Tile;
+                    sourceInfo.cellInt = Position;
+                    sourceInfo.mapInt = Map;
+                    sourceInfo.thingInt = IsMannable ? ((Thing)mannableComp.ManningPawn) : ((Thing)this);
+                    shootMortar.TryStartShelling(sourceInfo, globalTargetInfo);
+                }
+                else
+                {
+                    shootMortar.globalTargetInfo = GlobalTargetInfo.Invalid;
+                    shootMortar.TryStartCastOn(CurrentTarget, false, true);
+                }
+            }
+            else
+            {
+                AttackVerb.TryStartCastOn(CurrentTarget, false, true);
+            }
             OnAttackedTarget(CurrentTarget);
         }
 
-        protected void BurstComplete()                  // Added CompAmmo reload check
+        public void BurstComplete()                  // Added CompAmmo reload check
         {
             burstCooldownTicksLeft = BurstCooldownTime().SecondsToTicks();
             if (CompAmmo != null && CompAmmo.CurMagCount <= 0)
@@ -456,7 +521,7 @@ namespace CombatExtended
             }
         }
 
-        protected float BurstCooldownTime()             // Core method
+        public float BurstCooldownTime()             // Core method
         {
             if (def.building.turretBurstCooldownTime >= 0f)
             {
@@ -510,11 +575,16 @@ namespace CombatExtended
             return stringBuilder.ToString().TrimEndNewlines();
         }
 
-
-        public override void Draw()                     // Core method
+        public override void DrawAt(Vector3 drawLoc, bool flip = false)
         {
-            top.DrawTurret();
-            base.Draw();
+            Vector3 drawOffset = Vector3.zero;
+            float angleOffset = 0f;
+            if (Controller.settings.RecoilAnim)
+            {
+                CE_Utility.Recoil(def.building.turretGunDef, AttackVerb, out drawOffset, out angleOffset, top.CurRotation, false);
+            }
+            top.DrawTurret(drawLoc, drawOffset, angleOffset);
+            base.DrawAt(drawLoc, flip);
         }
 
         public override void DrawExtraSelectionOverlays()           // Draw at range less than 1.42 tiles
@@ -552,6 +622,59 @@ namespace CombatExtended
             }
         }
 
+        public bool TryAttackWorldTarget(GlobalTargetInfo targetInfo, LocalTargetInfo localTarget)
+        {
+            ResetCurrentTarget();
+            ResetForcedTarget();
+            int distanceToTarget = Find.WorldGrid.TraversalDistanceBetween(Map.Tile, targetInfo.Tile, true, maxDist: (int)(this.MaxWorldRange * 1.5f));
+            if (distanceToTarget > MaxWorldRange)
+            {
+                return false;
+            }
+            if (!Active)
+            {
+                return false;
+            }
+            if (localTarget.IsValid)
+            {
+                TryOrderAttackWorldTile(targetInfo, localTarget.Cell);
+            }
+            else
+            {
+                TryOrderAttackWorldTile(targetInfo, null);
+            }
+            return true;
+        }
+
+        public virtual void TryOrderAttackWorldTile(GlobalTargetInfo targetInf, IntVec3? cell = null)
+        {
+            int startingTile = Map.Tile;
+            int destinationTile = targetInf.Tile;
+
+            Vector3 direction = (Find.WorldGrid.GetTileCenter(startingTile) - Find.WorldGrid.GetTileCenter(destinationTile)).normalized;
+            Vector3 shotPos = DrawPos.Yto0();
+            Vector3 mapSize = Map.Size.ToVector3();
+            mapSize.y = Mathf.Max(mapSize.x, mapSize.z);
+
+            Ray ray = new Ray(shotPos, direction);
+            Bounds mapBounds = new Bounds(mapSize.Yto0() / 2f, mapSize);
+
+            mapBounds.IntersectRay(ray, out float dist);
+            Vector3 exitCell = ray.GetPoint(dist);
+            exitCell.x = Mathf.Clamp(exitCell.x, 0, mapSize.x - 1);
+            exitCell.z = Mathf.Clamp(exitCell.z, 0, mapSize.z - 1);
+            exitCell.y = 0;
+
+            if (cell.HasValue)
+            {
+                targetInf.cellInt = cell.Value;
+            }
+            this.globalTargetInfo = targetInf;
+            this.forcedTarget = new LocalTargetInfo(exitCell.ToIntVec3());
+            this.currentTargetInt = this.forcedTarget;
+            this.TryStartShootSomething(false);
+        }
+
         public override IEnumerable<Gizmo> GetGizmos()              // Modified
         {
             foreach (Gizmo gizmo in base.GetGizmos())
@@ -564,10 +687,24 @@ namespace CombatExtended
                 foreach (Command com in CompAmmo.CompGetGizmosExtra())
                 {
                     if (!PlayerControlled && Prefs.DevMode && com is GizmoAmmoStatus)
+                    {
                         (com as GizmoAmmoStatus).prefix = "DEV: ";
+                    }
 
                     yield return com;
                 }
+            }
+            if (IsMortar && Active && Faction.IsPlayerSafe() && (compAmmo?.UseAmmo ?? false) && ProjectileProps?.shellingProps != null)
+            {
+                Command_ArtilleryTarget wt = new Command_ArtilleryTarget()
+                {
+                    defaultLabel = "CE_ArtilleryTargetLabel".Translate(),
+                    defaultDesc = "CE_ArtilleryTargetDesc".Translate(),
+                    turret = this,
+                    icon = ContentFinder<Texture2D>.Get("UI/Buttons/AttackWorldTile", true),
+                    hotKey = KeyBindingDefOf.Misc5
+                };
+                yield return wt;
             }
             // Don't show CONTROL gizmos on enemy turrets (even with dev mode enabled)
             if (PlayerControlled)
@@ -606,7 +743,7 @@ namespace CombatExtended
                     stop.icon = ContentFinder<Texture2D>.Get("UI/Commands/Halt", true);
                     stop.action = delegate
                     {
-                        ResetForcedTarget();
+                        SyncedResetForcedTarget();
                         SoundDefOf.Tick_Low.PlayOneShotOnCamera(null);
                     };
                     if (!this.forcedTarget.IsValid)
@@ -625,14 +762,7 @@ namespace CombatExtended
                         defaultDesc = "CommandHoldFireDesc".Translate(),
                         icon = ContentFinder<Texture2D>.Get("UI/Commands/HoldFire", true),
                         hotKey = KeyBindingDefOf.Misc6,
-                        toggleAction = delegate
-                        {
-                            holdFire = !holdFire;
-                            if (holdFire)
-                            {
-                                ResetForcedTarget();
-                            }
-                        },
+                        toggleAction = ToggleHoldFire,
                         isActive = (() => holdFire)
                     };
                 }
@@ -641,9 +771,24 @@ namespace CombatExtended
 
         // ExtractShell not added
 
-        private void ResetForcedTarget()                // Core method
+        [Compatibility.Multiplayer.SyncMethod]
+        private void ToggleHoldFire()
         {
+            holdFire = !holdFire;
+            if (holdFire)
+            {
+                ResetForcedTarget();
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private void SyncedResetForcedTarget() => ResetForcedTarget();
+
+        public virtual void ResetForcedTarget()                // Core method
+        {
+            this.targetingWorldMap = false;
             this.forcedTarget = LocalTargetInfo.Invalid;
+            this.globalTargetInfo = GlobalTargetInfo.Invalid;
             this.burstWarmupTicksLeft = 0;
             if (this.burstCooldownTicksLeft <= 0)
             {
@@ -651,7 +796,7 @@ namespace CombatExtended
             }
         }
 
-        private void ResetCurrentTarget()               // Core method
+        public void ResetCurrentTarget()               // Core method
         {
             this.currentTargetInt = LocalTargetInfo.Invalid;
             this.burstWarmupTicksLeft = 0;
@@ -686,7 +831,9 @@ namespace CombatExtended
         public Thing InventoryAmmo(CompInventory inventory)
         {
             if (inventory == null)
+            {
                 return null;
+            }
 
             Thing ammo = inventory.container.FirstOrDefault(x => x.def == CompAmmo.SelectedAmmo);
 
@@ -702,8 +849,15 @@ namespace CombatExtended
         public void TryOrderReload(bool forced = false)
         {
             //No reload necessary at all --
-            if ((CompAmmo.CurrentAmmo == CompAmmo.SelectedAmmo && (!CompAmmo.HasMagazine || CompAmmo.CurMagCount == CompAmmo.Props.magazineSize)))
+            if (compAmmo == null || (CompAmmo.CurrentAmmo == CompAmmo.SelectedAmmo && (!CompAmmo.HasMagazine || CompAmmo.CurMagCount == CompAmmo.MagSize)))
+            {
                 return;
+            }
+
+            if (TryReloadViaAutoLoader())
+            {
+                return;
+            }
 
             //Non-mannableComp interaction
             if (!mannableComp?.MannedNow ?? true)
@@ -713,7 +867,9 @@ namespace CombatExtended
 
             //Only have manningPawn reload after a long time of no firing
             if (!forced && Reloadable && (compAmmo.CurMagCount != 0 || ticksUntilAutoReload > 0))
+            {
                 return;
+            }
 
             //Already reserved for manning
             Pawn manningPawn = mannableComp.ManningPawn;
@@ -730,7 +886,26 @@ namespace CombatExtended
                     manningPawn.jobs.StartJob(jobOnThing, JobCondition.Ongoing, null, manningPawn.CurJob?.def != CE_JobDefOf.ReloadTurret);
                 }
             }
+        }
 
+        public bool TryReloadViaAutoLoader()
+        {
+            if (TargetCurrentlyAimingAt != null)
+            {
+                return false;
+            }
+
+            List<Thing> adjThings = new List<Thing>();
+            GenAdjFast.AdjacentThings8Way(this, adjThings);
+
+            foreach (Thing building in adjThings)
+            {
+                if (building is Building_AutoloaderCE container && container.StartReload(compAmmo))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
         #endregion
     }

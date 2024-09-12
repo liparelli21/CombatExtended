@@ -12,44 +12,42 @@ using Verse.AI.Group;
 
 namespace CombatExtended.HarmonyCE
 {
-	[HarmonyPatch(typeof(CompressibilityDecider), "DetermineReferences")]
-	public class CompressibilityDecider_DetermineReferences_AvoidProjectileInvalidCast
-	{
-		enum Stage { Searching, Deleting, Done }
-		
-		private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-		{
-			var stage = Stage.Searching;
-			var instructionsList = instructions.ToList();
+    [HarmonyPatch(typeof(CompressibilityDecider), "DetermineReferences")]
+    public class CompressibilityDecider_DetermineReferences
+    {
 
-			for(int i = 0; i < instructionsList.Count(); i++)
-			{
-				if (stage == Stage.Searching && IsStartOfProjectileLoopSection(instructionsList, i)) {
-					instructionsList[i-3].opcode = OpCodes.Nop;
-					instructionsList[i-2].opcode = OpCodes.Nop;
-					instructionsList[i-1].opcode = OpCodes.Nop;
-					instructionsList[i].opcode = OpCodes.Nop;
-					stage = Stage.Deleting;
-                }
-				else if (stage == Stage.Deleting)
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        {
+            var instructionsList = instructions.ToList();
+            var notProjectileLabel = generator.DefineLabel();
+
+            for (int i = 0; i < instructionsList.Count(); i++)
+            {
+                // Add an instanceof check before the vanilla cast to Projectile and skip projectiles that are not the correct type
+                // to avoid crashing the save
+                if (instructionsList[i].Is(OpCodes.Castclass, typeof(Projectile)) && instructionsList[i - 2].IsLdloc())
                 {
-					if (instructionsList[i].opcode == OpCodes.Blt_S)
-					{
-						stage = Stage.Done;
-					}
-					instructionsList[i].opcode = OpCodes.Nop;
+                    // Find and mark the loop condition check as our jump target
+                    for (int j = i + 1; j < instructionsList.Count(); j++)
+                    {
+                        if (instructionsList[j].IsLdloc() && instructionsList[j].OperandIs(instructionsList[i - 2].operand))
+                        {
+                            if (instructionsList[j + 1].opcode == OpCodes.Ldc_I4_1 && instructionsList[j + 2].opcode == OpCodes.Add)
+                            {
+                                instructionsList[j].labels.Add(notProjectileLabel);
+                                break;
+                            }
+                        }
+                    }
+                    yield return new CodeInstruction(OpCodes.Isinst, typeof(Projectile));
+                    yield return new CodeInstruction(OpCodes.Brfalse_S, notProjectileLabel);
+                    yield return instructionsList[i - 3].Clone(); // ldloc
+                    yield return instructionsList[i - 2].Clone(); // ldloc
+                    yield return instructionsList[i - 1].Clone(); // callvirt
                 }
 
-			}
-			return instructionsList;
-		}
-
-		private static bool IsStartOfProjectileLoopSection(List<CodeInstruction> instructionsList, int i)
-		{
-			return instructionsList[i].opcode == OpCodes.Ldc_I4_S && (sbyte)instructionsList[i].operand == 48
-                && instructionsList[i + 1].opcode == OpCodes.Callvirt && instructionsList[i + 1].operand as MethodInfo != null && (instructionsList[i + 1].operand as MethodInfo).Name == "ThingsInGroup"
-                && instructionsList[i + 2].opcode == OpCodes.Stloc_1
-                ;
-		}
-	}
+                yield return instructionsList[i];
+            }
+        }
+    }
 }

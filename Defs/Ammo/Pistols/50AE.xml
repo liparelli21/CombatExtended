@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Defs>
 
 	<ThingCategoryDef>
@@ -15,9 +15,10 @@
 		<label>.50 AE</label>
 		<ammoTypes>
 			<Ammo_50AE_FMJ>Bullet_50AE_FMJ</Ammo_50AE_FMJ>
-			<Ammo_50AE_AP>Bullet_50AE_AP</Ammo_50AE_AP>			
+			<Ammo_50AE_AP>Bullet_50AE_AP</Ammo_50AE_AP>
 			<Ammo_50AE_HP>Bullet_50AE_HP</Ammo_50AE_HP>
 		</ammoTypes>
+		<similarTo>AmmoSet_PistolMagnum</similarTo>
 	</CombatExtended.AmmoSetDef>
 
 	<!-- ==================== Ammo ========================== -->
@@ -39,7 +40,7 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="50AEBase">
 		<defName>Ammo_50AE_FMJ</defName>
-		<label>.50 AE cartridge (FMJ)</label>
+		<label>.50 AE (FMJ)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/FMJ</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -53,7 +54,7 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="50AEBase">
 		<defName>Ammo_50AE_AP</defName>
-		<label>.50 AE cartridge (AP)</label>
+		<label>.50 AE (AP)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/AP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -67,7 +68,7 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="50AEBase">
 		<defName>Ammo_50AE_HP</defName>
-		<label>.50 AE cartridge (HP)</label>
+		<label>.50 AE (HP)</label>
 		<graphicData>
 			<texPath>Things/Ammo/Pistol/HP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
@@ -81,44 +82,47 @@
 
 	<!-- ================== Projectiles ================== -->
 
-	<ThingDef Class="CombatExtended.AmmoDef" Name="Base50AEBullet" ParentName="BaseBullet" Abstract="true">
+	<ThingDef Name="Base50AEBullet" ParentName="BaseBulletCE" Abstract="true">
 		<graphicData>
 			<texPath>Things/Projectile/Bullet_Big</texPath>
 			<graphicClass>Graphic_Single</graphicClass>
 		</graphicData>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageDef>Bullet</damageDef>
-			<speed>90</speed>
+			<speed>98</speed>
+			<dropsCasings>true</dropsCasings>
+			<casingMoteDefname>Fleck_PistolAmmoCasings</casingMoteDefname>
+			<casingFilthDefname>Filth_PistolAmmoCasings</casingFilthDefname>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base50AEBullet">
+	<ThingDef ParentName="Base50AEBullet">
 		<defName>Bullet_50AE_FMJ</defName>
 		<label>.50 AE bullet (FMJ)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>19</damageAmountBase>
-			<armorPenetrationSharp>8</armorPenetrationSharp>
-			<armorPenetrationBlunt>38.480</armorPenetrationBlunt>
+			<armorPenetrationSharp>6.5</armorPenetrationSharp>
+			<armorPenetrationBlunt>39.36</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base50AEBullet">
+	<ThingDef ParentName="Base50AEBullet">
 		<defName>Bullet_50AE_AP</defName>
 		<label>.50 AE bullet (AP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>12</damageAmountBase>
-			<armorPenetrationSharp>16</armorPenetrationSharp>
-			<armorPenetrationBlunt>38.480</armorPenetrationBlunt>
+			<armorPenetrationSharp>13</armorPenetrationSharp>
+			<armorPenetrationBlunt>39.36</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base50AEBullet">
+	<ThingDef ParentName="Base50AEBullet">
 		<defName>Bullet_50AE_HP</defName>
 		<label>.50 AE bullet (HP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>24</damageAmountBase>
-			<armorPenetrationSharp>4</armorPenetrationSharp>
-			<armorPenetrationBlunt>38.480</armorPenetrationBlunt>
+			<armorPenetrationSharp>3.5</armorPenetrationSharp>
+			<armorPenetrationBlunt>39.36</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
@@ -149,7 +153,33 @@
 		</products>
 		<workAmount>3000</workAmount>
 	</RecipeDef>
-	
+
+	<RecipeDef ParentName="AmmoRecipeBase">
+		<defName>MakeAmmo_50AE_AP</defName>
+		<label>make .50 AE (AP) cartridge x500</label>
+		<description>Craft 500 .50 AE (AP) cartridges.</description>
+		<jobString>Making .50 AE (AP) cartridges.</jobString>
+		<ingredients>
+			<li>
+				<filter>
+					<thingDefs>
+						<li>Steel</li>
+					</thingDefs>
+				</filter>
+				<count>30</count>
+			</li>
+		</ingredients>
+		<fixedIngredientFilter>
+			<thingDefs>
+				<li>Steel</li>
+			</thingDefs>
+		</fixedIngredientFilter>
+		<products>
+			<Ammo_50AE_AP>500</Ammo_50AE_AP>
+		</products>
+		<workAmount>3600</workAmount>
+	</RecipeDef>
+
 	<RecipeDef ParentName="AmmoRecipeBase">
 		<defName>MakeAmmo_50AE_HP</defName>
 		<label>make .50 AE (HP) cartridge x500</label>
@@ -175,32 +205,5 @@
 		</products>
 		<workAmount>3000</workAmount>
 	</RecipeDef>
-
-	<RecipeDef ParentName="AmmoRecipeBase">
-		<defName>MakeAmmo_50AE_AP</defName>
-		<label>make .50 AE (AP) cartridge x500</label>
-		<description>Craft 500 .50 AE (AP) cartridges.</description>
-		<jobString>Making .50 AE (AP) cartridges.</jobString>
-		<ingredients>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>Steel</li>
-					</thingDefs>
-				</filter>
-				<count>30</count>
-			</li>
-		</ingredients>
-		<fixedIngredientFilter>
-			<thingDefs>
-				<li>Steel</li>
-			</thingDefs>
-		</fixedIngredientFilter>
-		<products>
-			<Ammo_50AE_AP>500</Ammo_50AE_AP>
-		</products>
-		<workAmount>3000</workAmount>
-	</RecipeDef>
-
 
 </Defs>

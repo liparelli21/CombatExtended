@@ -11,7 +11,7 @@ namespace CombatExtended
     class ArtilleryMarker : AttachableThing
     {
         public const string MarkerDef = "ArtilleryMarker";
-
+        public Pawn caster;
         public float aimingAccuracy = 1f;
         public float sightsEfficiency = 1f;
         public float lightingShift = 0f;
@@ -21,12 +21,16 @@ namespace CombatExtended
 
         public override string InspectStringAddon
         {
-            get { return "CE_MarkedForArtillery".Translate() + " " + ((int)(lifetimeTicks / 60)).ToString() + " s"; }
+            get
+            {
+                return "CE_MarkedForArtillery".Translate() + " " + ((int)(lifetimeTicks / 60)).ToString() + " s";
+            }
         }
 
         public override void ExposeData()
         {
             base.ExposeData();
+            Scribe_References.Look(ref caster, "caster");
             Scribe_Values.Look(ref this.aimingAccuracy, "aimingAccuracy");
             Scribe_Values.Look(ref this.sightsEfficiency, "sightsEfficiency");
             Scribe_Values.Look(ref this.lightingShift, "lightingShift");

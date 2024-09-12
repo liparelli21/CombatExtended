@@ -1,17 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <LanguageData>
-
-  <MercenaryMachineGunner.label>雇佣机枪手</MercenaryMachineGunner.label>
-  <MercenaryMachineGunner.labelPlural>雇佣机枪手</MercenaryMachineGunner.labelPlural>
-
-
-  <!-- Tribals -->
-
-  <TribalGrenadier.label>爆破手</TribalGrenadier.label>
-  <TribalGrenadier.labelPlural>爆破手</TribalGrenadier.labelPlural>
-
-  <TribalGunner.label>部落枪手</TribalGunner.label>
-  <TribalGunner.labelPlural>部落枪手</TribalGunner.labelPlural>
-
-
+  
+  <!-- EN: mercenary machine gunner -->
+  <CE_Mercenary_MachineGunner.label>雇佣机枪手</CE_Mercenary_MachineGunner.label>
+  
+  <!-- EN: boomer -->
+  <CE_Tribal_Grenadier.label>野人</CE_Tribal_Grenadier.label>
+  
+  <!-- EN: thunderer -->
+  <CE_Tribal_Gunner.label>雷神</CE_Tribal_Gunner.label>
+  
 </LanguageData>

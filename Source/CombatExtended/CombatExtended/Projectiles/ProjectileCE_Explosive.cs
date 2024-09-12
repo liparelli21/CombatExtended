@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using Verse;
 using RimWorld;
 using UnityEngine;
 using System.Collections.Generic;
+using CombatExtended.Utilities;
 
 namespace CombatExtended
 {
@@ -23,12 +24,22 @@ namespace CombatExtended
                 this.ticksToDetonation--;
                 if (this.ticksToDetonation <= 0)
                 {
-					//Explosions are all handled in base
+                    //Explosions are all handled in base
                     base.Impact(null);
+                    return;
+                }
+                if ((def.projectile as ProjectilePropertiesCE).suppressionFactor > 0f && landed)
+                {
+                    foreach (var thing in ExactPosition.ToIntVec3().PawnsInRange(Map,
+                                SuppressionRadius + def.projectile.explosionRadius +
+                                    (def.projectile.applyDamageToExplosionCellsNeighbors ? 1.5f : 0f)))
+                    {
+                        ApplySuppression(thing, 1f - (ticksToDetonation / def.projectile.explosionDelay));
+                    }
                 }
             }
         }
-        protected override void Impact(Thing hitThing)
+        public override void Impact(Thing hitThing)
         {
             // Snap to target so we hit multi-tile pawns with our explosion
             if (hitThing is Pawn)
@@ -40,33 +51,23 @@ namespace CombatExtended
             }
             if (def.projectile.explosionDelay == 0)
             {
-				//Explosions are all handled in base
-                base.Impact(null);
+                //Explosions are all handled in base
+                base.Impact(hitThing);
                 return;
             }
             landed = true;
             ticksToDetonation = def.projectile.explosionDelay;
-            GenExplosion.NotifyNearbyPawnsOfDangerousExplosive(this, this.def.projectile.damageDef, this.launcher?.Faction);
-        }
-            //This code was disabled because it didn't run under previous circumstances. Could be enabled if necessary
-            /*
-            if (map != null && base.ExactPosition.ToIntVec3().IsValid)
+            float dangerFactor = (def.projectile as ProjectilePropertiesCE).dangerFactor;
+            if (dangerFactor > 0f)
             {
-                ThrowBigExplode(base.ExactPosition + Gen.RandomHorizontalVector(def.projectile.explosionRadius * 0.5f), base.Map, def.projectile.explosionRadius * 0.4f);
+                DangerTracker.Notify_DangerRadiusAt(Position,
+                        def.projectile.explosionRadius +
+                            (def.projectile.applyDamageToExplosionCellsNeighbors ? 1.5f : 0f),
+                        def.projectile.damageAmountBase * dangerFactor);
+
+                GenExplosion.NotifyNearbyPawnsOfDangerousExplosive(this, this.def.projectile.damageDef,
+                        this.launcher?.Faction);
             }
-            */
-        /*public static void ThrowBigExplode(Vector3 loc, Map map, float size)
-          {
-              if (!loc.ShouldSpawnMotesAt(map))
-              {
-                  return;
-              }
-              MoteThrown moteThrown = (MoteThrown)ThingMaker.MakeThing(ThingDef.Named("Mote_BigExplode"), null);
-              moteThrown.Scale = Rand.Range(5f, 6f) * size;
-              moteThrown.exactRotation = Rand.Range(0f, 0f);
-              moteThrown.exactPosition = loc;
-              moteThrown.SetVelocity((float)Rand.Range(6, 8), Rand.Range(0.002f, 0.003f));
-              GenSpawn.Spawn(moteThrown, loc.ToIntVec3(), map);
-          }*/
+        }
     }
 }

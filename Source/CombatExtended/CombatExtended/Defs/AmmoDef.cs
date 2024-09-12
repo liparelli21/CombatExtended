@@ -14,12 +14,21 @@ namespace CombatExtended
         public int defaultAmmoCount = 1;
         public float cookOffSpeed = 1f;
         public float cookOffFlashScale = 1;
+        public float worldTilesPerTick = 0.2f;
+        public bool menuHidden;
         public ThingDef cookOffProjectile = null;
         public SoundDef cookOffSound = null;
         public SoundDef cookOffTailSound = null;
         public ThingDef detonateProjectile = null;
-        // mortar ammo should still availabe when the ammo system is off
+
+        // mortar ammo should still availabe when the ammo system is off        
         public bool isMortarAmmo = false;
+        public bool spawnAsSiegeAmmo = true;
+
+        public int ammoCount = 1;
+        public ThingDef partialUnloadAmmoDef = null;
+
+        public List<string> ammoTags;
 
         private List<DefHyperlink> originalHyperlinks;
 
@@ -30,21 +39,25 @@ namespace CombatExtended
             {
                 if (users == null)
                 {
-                    users = CE_Utility.allWeaponDefs.FindAll(delegate(ThingDef def) 
+                    users = CE_Utility.allWeaponDefs.FindAll(delegate (ThingDef def)
                     {
                         CompProperties_AmmoUser props = def.GetCompProperties<CompProperties_AmmoUser>();
-                        if(props?.ammoSet?.ammoTypes != null)
+                        if (props?.ammoSet?.ammoTypes != null)
                         {
                             return props.ammoSet.ammoTypes.Any(x => x.ammo == this);
                         }
                         return false;
                     });
-                    
+
                     if (users != null && !users.Any())
+                    {
                         return users;
-                    
+                    }
+
                     if (descriptionHyperlinks.NullOrEmpty())
+                    {
                         descriptionHyperlinks = new List<DefHyperlink>();
+                    }
                     else
                     {
                         if (originalHyperlinks.NullOrEmpty())
@@ -52,7 +65,9 @@ namespace CombatExtended
                             originalHyperlinks = new List<DefHyperlink>();
 
                             foreach (var i in descriptionHyperlinks)
+                            {
                                 originalHyperlinks.Add(i);
+                            }
                         }
                         else
                         {
@@ -64,13 +79,15 @@ namespace CombatExtended
                             }
                         }
                     }
-                    
+
                     foreach (var user in users)
                     {
                         descriptionHyperlinks.Add(user);
 
                         if (user.descriptionHyperlinks.NullOrEmpty())
+                        {
                             user.descriptionHyperlinks = new List<DefHyperlink>();
+                        }
 
                         user.descriptionHyperlinks.Add(this);
                     }
@@ -86,19 +103,24 @@ namespace CombatExtended
             get
             {
                 if (ammoSetDefs == null)
+                {
                     ammoSetDefs = Users.Select(x => x.GetCompProperties<CompProperties_AmmoUser>().ammoSet).Distinct().ToList();
+                }
 
                 return ammoSetDefs;
             }
         }
-        
+
+        [NoTranslate]
         private string oldDescription;
         public void AddDescriptionParts()
         {
             if (ammoClass != null)
             {
                 if (oldDescription.NullOrEmpty())
+                {
                     oldDescription = description;
+                }
 
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.AppendLine(oldDescription);
@@ -109,9 +131,23 @@ namespace CombatExtended
 
                 // Append guns that use this caliber
                 if (!Users.NullOrEmpty())
+                {
                     stringBuilder.AppendLine("\n" + "CE_UsedBy".Translate() + ":");
+                }
 
                 description = stringBuilder.ToString().TrimEndNewlines();
+            }
+        }
+
+        public override IEnumerable<string> ConfigErrors()
+        {
+            foreach (string s in base.ConfigErrors())
+            {
+                yield return s;
+            }
+            if (HasComp(typeof(CompApparelReloadable)) && stackLimit > 1)
+            {
+                yield return "has compreloadable and a stack limit higher than 1. this is not recommended.";
             }
         }
 
@@ -124,10 +160,12 @@ namespace CombatExtended
                 foreach (var comp in detonateProjectile.comps)
                 {
                     if (!comps.Any(x => x.compClass == comp.compClass)
-                        && (comp.compClass == typeof(CompFragments)
-                            || comp.compClass == typeof(CompExplosive)
-                            || comp.compClass == typeof(CompExplosiveCE)))
+                            && (comp.compClass == typeof(CompFragments)
+                                || comp.compClass == typeof(CompExplosive)
+                                || comp.compClass == typeof(CompExplosiveCE)))
+                    {
                         comps.Add(comp);
+                    }
                 }
             }
         }

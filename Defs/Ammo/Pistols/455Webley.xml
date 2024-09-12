@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Defs>
 
 	<ThingCategoryDef>
@@ -16,8 +16,9 @@
 		<ammoTypes>
 			<Ammo_455Webley_FMJ>Bullet_455Webley_FMJ</Ammo_455Webley_FMJ>
 			<Ammo_455Webley_AP>Bullet_455Webley_AP</Ammo_455Webley_AP>
-			<Ammo_455Webley_HP>Bullet_455Webley_HP</Ammo_455Webley_HP>			
+			<Ammo_455Webley_HP>Bullet_455Webley_HP</Ammo_455Webley_HP>
 		</ammoTypes>
+		<similarTo>AmmoSet_Pistol</similarTo>
 	</CombatExtended.AmmoSetDef>
 
 	<!-- ==================== Ammo ========================== -->
@@ -39,9 +40,9 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="455WebleyBase">
 		<defName>Ammo_455Webley_FMJ</defName>
-		<label>.455 Webley cartridge (FMJ)</label>
+		<label>.455 Webley (FMJ)</label>
 		<graphicData>
-			<texPath>Things/Ammo/Pistol/FMJ</texPath>
+			<texPath>Things/Ammo/Revolver/FMJ</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
 		</graphicData>
 		<statBases>
@@ -53,9 +54,9 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="455WebleyBase">
 		<defName>Ammo_455Webley_AP</defName>
-		<label>.455 Webley cartridge (AP)</label>
+		<label>.455 Webley (AP)</label>
 		<graphicData>
-			<texPath>Things/Ammo/Pistol/AP</texPath>
+			<texPath>Things/Ammo/Revolver/AP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
 		</graphicData>
 		<statBases>
@@ -67,9 +68,9 @@
 
 	<ThingDef Class="CombatExtended.AmmoDef" ParentName="455WebleyBase">
 		<defName>Ammo_455Webley_HP</defName>
-		<label>.455 Webley cartridge (HP)</label>
+		<label>.455 Webley (HP)</label>
 		<graphicData>
-			<texPath>Things/Ammo/Pistol/HP</texPath>
+			<texPath>Things/Ammo/Revolver/HP</texPath>
 			<graphicClass>Graphic_StackCount</graphicClass>
 		</graphicData>
 		<statBases>
@@ -81,44 +82,46 @@
 
 	<!-- ================== Projectiles ================== -->
 
-	<ThingDef Class="CombatExtended.AmmoDef" Name="Base455WebleyBullet" ParentName="BaseBullet" Abstract="true">
+	<ThingDef Name="Base455WebleyBullet" ParentName="BaseBulletCE" Abstract="true">
 		<graphicData>
 			<texPath>Things/Projectile/Bullet_Small</texPath>
 			<graphicClass>Graphic_Single</graphicClass>
 		</graphicData>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageDef>Bullet</damageDef>
-			<speed>36</speed>
+			<speed>50</speed>
 			<dropsCasings>true</dropsCasings>
+			<casingMoteDefname>Fleck_PistolAmmoCasings</casingMoteDefname>
+			<casingFilthDefname>Filth_PistolAmmoCasings</casingFilthDefname>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base455WebleyBullet">
+	<ThingDef ParentName="Base455WebleyBullet">
 		<defName>Bullet_455Webley_FMJ</defName>
 		<label>.455 Webley bullet (FMJ)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
-			<damageAmountBase>12</damageAmountBase>
-			<armorPenetrationSharp>3</armorPenetrationSharp>
+			<damageAmountBase>9</damageAmountBase>
+			<armorPenetrationSharp>2</armorPenetrationSharp>
 			<armorPenetrationBlunt>5.5</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base455WebleyBullet">
+	<ThingDef ParentName="Base455WebleyBullet">
 		<defName>Bullet_455Webley_AP</defName>
 		<label>.455 Webley bullet (AP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>6</damageAmountBase>
-			<armorPenetrationSharp>6</armorPenetrationSharp>
+			<armorPenetrationSharp>4</armorPenetrationSharp>
 			<armorPenetrationBlunt>5.5</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
 
-	<ThingDef Class="CombatExtended.AmmoDef" ParentName="Base455WebleyBullet">
+	<ThingDef ParentName="Base455WebleyBullet">
 		<defName>Bullet_455Webley_HP</defName>
 		<label>.455 Webley bullet (HP)</label>
 		<projectile Class="CombatExtended.ProjectilePropertiesCE">
 			<damageAmountBase>12</damageAmountBase>
-			<armorPenetrationSharp>2</armorPenetrationSharp>
+			<armorPenetrationSharp>1</armorPenetrationSharp>
 			<armorPenetrationBlunt>5.5</armorPenetrationBlunt>
 		</projectile>
 	</ThingDef>
@@ -174,7 +177,7 @@
 		<products>
 			<Ammo_455Webley_AP>500</Ammo_455Webley_AP>
 		</products>
-		<workAmount>2200</workAmount>
+		<workAmount>3120</workAmount>
 	</RecipeDef>
 
 	<RecipeDef ParentName="AmmoRecipeBase">
@@ -200,8 +203,7 @@
 		<products>
 			<Ammo_455Webley_HP>500</Ammo_455Webley_HP>
 		</products>
-		<workAmount>2200</workAmount>
+		<workAmount>2600</workAmount>
 	</RecipeDef>
-
 
 </Defs>

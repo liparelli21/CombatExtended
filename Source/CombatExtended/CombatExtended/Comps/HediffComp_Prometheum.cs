@@ -27,7 +27,7 @@ namespace CombatExtended
                 Fire fire = Pawn.GetAttachment(ThingDefOf.Fire) as Fire;
                 if (fire == null && Pawn.Spawned)
                 {
-                    Pawn.TryAttachFire(parent.Severity * 0.5f);
+                    Pawn.TryAttachFire(parent.Severity * 0.5f, null);
                 }
                 else if (fire != null)
                 {
@@ -39,9 +39,11 @@ namespace CombatExtended
                 {
                     var internalPart = Pawn.health.hediffSet.GetNotMissingParts(BodyPartHeight.Undefined, BodyPartDepth.Inside).RandomElement();
                     if (internalPart == null)
+                    {
                         return;
+                    }
                     Pawn.TakeDamage(new DamageInfo(CE_DamageDefOf.Flame_Secondary, InternalFireDamage * Pawn.BodySize * parent.Severity, 0, -1, null,
-                        internalPart));
+                                                   internalPart));
                 }
             }
         }

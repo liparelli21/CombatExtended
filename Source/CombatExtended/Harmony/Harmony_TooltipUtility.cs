@@ -22,7 +22,7 @@ namespace CombatExtended.HarmonyCE
                 Verb_LaunchProjectileCE verbCE = null;
                 Pawn pawn = selectedThing as Pawn;
                 if (pawn != null && pawn != target && pawn.equipment != null &&
-                    pawn.equipment.Primary != null && pawn.equipment.PrimaryEq.PrimaryVerb is Verb_LaunchProjectileCE)
+                        pawn.equipment.Primary != null && pawn.equipment.PrimaryEq.PrimaryVerb is Verb_LaunchProjectileCE)
                 {
                     verbCE = pawn.equipment.PrimaryEq.PrimaryVerb as Verb_LaunchProjectileCE;
                 }
@@ -38,13 +38,16 @@ namespace CombatExtended.HarmonyCE
                     string obstructReport;
                     if (verbCE.CanHitTarget(target, out obstructReport))
                     {
-                        ShiftVecReport report = verbCE.ShiftVecReportFor(target);
+                        ShiftVecReport report = verbCE.ShiftVecReportFor(new LocalTargetInfo(target));
                         stringBuilder.Append(report.GetTextReadout());
                     }
                     else
                     {
                         stringBuilder.Append("CannotHit".Translate());
-                        if (!obstructReport.NullOrEmpty()) stringBuilder.Append(" " + obstructReport + ".");
+                        if (!obstructReport.NullOrEmpty())
+                        {
+                            stringBuilder.Append(" " + obstructReport + ".");
+                        }
                     }
                     Pawn pawn2 = target as Pawn;
                     if (pawn2 != null && pawn2.Faction == null && !pawn2.InAggroMentalState)

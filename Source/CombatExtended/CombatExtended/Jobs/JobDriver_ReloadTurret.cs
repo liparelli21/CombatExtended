@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using CombatExtended.CombatExtended.LoggerUtils;
 using RimWorld;
 using UnityEngine;
@@ -74,17 +75,16 @@ namespace CombatExtended
         public override string GetReport()
         {
             string text = CE_JobDefOf.ReloadTurret.reportString;
-            string turretType = (turret.def.hasInteractionCell ? "CE_MannedTurret" : "CE_AutoTurret").Translate();
+            string turretType = (turret.TryGetComp<CompMannable>() != null ? "CE_MannedTurret" : "CE_AutoTurret").Translate();
             text = text.Replace("TurretType", turretType);
             text = text.Replace("TargetA", TargetThingA.def.label);
-            if (compReloader.UseAmmo)
-                text = text.Replace("TargetB", TargetThingB.def.label);
-            else
-                text = text.Replace("TargetB", "CE_ReloadingGenericAmmo".Translate());
+            text = compReloader.UseAmmo
+                ? text.Replace("TargetB", TargetThingB.def.label)
+                : text.Replace("TargetB", "CE_ReloadingGenericAmmo".Translate());
             return text;
         }
 
-        protected override IEnumerable<Toil> MakeNewToils()
+        public override IEnumerable<Toil> MakeNewToils()
         {
             // Error checking/input validation.
             if (turret == null)
@@ -112,9 +112,13 @@ namespace CombatExtended
 
             // Set fail condition on turret.
             if (pawn.Faction != Faction.OfPlayer)
+            {
                 this.FailOnDestroyedOrNull(TargetIndex.A);
+            }
             else
+            {
                 this.FailOnDestroyedNullOrForbidden(TargetIndex.A);
+            }
 
             // If someone else magically reloaded our turret while we were reloading, fail.
             // This happens when Project RimFactory's refueling machine is set up.
@@ -128,8 +132,14 @@ namespace CombatExtended
 
                 if (TargetThingB is AmmoThing)
                 {
-                    toilGoToCell.AddEndCondition(delegate { return (TargetThingB as AmmoThing).IsCookingOff ? JobCondition.Incompletable : JobCondition.Ongoing; });
-                    toilCarryThing.AddEndCondition(delegate { return (TargetThingB as AmmoThing).IsCookingOff ? JobCondition.Incompletable : JobCondition.Ongoing; });
+                    toilGoToCell.AddEndCondition(delegate
+                    {
+                        return (TargetThingB as AmmoThing).IsCookingOff ? JobCondition.Incompletable : JobCondition.Ongoing;
+                    });
+                    toilCarryThing.AddEndCondition(delegate
+                    {
+                        return (TargetThingB as AmmoThing).IsCookingOff ? JobCondition.Incompletable : JobCondition.Ongoing;
+                    });
                 }
 
                 if (pawn.Faction != Faction.OfPlayer)
@@ -151,13 +161,26 @@ namespace CombatExtended
             }
 
             // If ammo system is turned off we just need to go to the turret.
-            yield return Toils_Goto.GotoCell(turret.Position, PathEndMode.Touch);
+            if (turret.InteractionCell != null)
+            {
+                yield return Toils_Goto.GotoCell(turret.InteractionCell, PathEndMode.OnCell);
+            }
+            else
+            {
+                yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.Touch);
+            }
 
             //If pawn fails reloading from this point, reset isReloading
-            this.AddFinishAction(delegate { turret.SetReloading(false); });
+            this.AddFinishAction(delegate
+            {
+                turret.SetReloading(false);
+            });
 
             // Wait in place
-            Toil waitToil = new Toil() { actor = pawn };
+            Toil waitToil = new Toil()
+            {
+                actor = pawn
+            };
             waitToil.initAction = delegate
             {
                 // Initial relaod process activities.
@@ -165,13 +188,13 @@ namespace CombatExtended
                 waitToil.actor.pather.StopDead();
                 if (compReloader.ShouldThrowMote)
                 {
-                    MoteMaker.ThrowText(turret.Position.ToVector3Shifted(), turret.Map, string.Format("CE_ReloadingTurretMote".Translate(), TargetThingA.LabelCapNoCount));
+                    MoteMakerCE.ThrowText(turret.Position.ToVector3Shifted(), turret.Map, string.Format("CE_ReloadingTurretMote".Translate(), TargetThingA.LabelCapNoCount));
                 }
                 //Thing newAmmo;
                 //compReloader.TryUnload(out newAmmo);
                 //if (newAmmo?.CanStackWith(ammo) ?? false)
                 //{
-                //    pawn.carryTracker.TryStartCarry(newAmmo, Mathf.Min(newAmmo.stackCount, compReloader.Props.magazineSize - ammo.stackCount));
+                //    pawn.carryTracker.TryStartCarry(newAmmo, Mathf.Min(newAmmo.stackCount, compReloader.MagSize - ammo.stackCount));
                 //}
                 AmmoDef currentAmmo = compReloader.CurrentAmmo;
                 if (currentAmmo != ammo?.def)    //Turrets are reloaded without unloading the mag first (if using same ammo type), to support very high capacity magazines
@@ -191,8 +214,32 @@ namespace CombatExtended
                 compReloader.LoadAmmo(ammo);
                 turret.SetReloading(false);
             };
+
+            Func<bool> jumpCondition =
+                () => compReloader.Props.reloadOneAtATime &&
+                compReloader.CurMagCount < compReloader.MagSize &&
+                (!compReloader.UseAmmo || TryFindAmmo(pawn, compReloader, ammo));
+            Toil jumpToil = Toils_Jump.JumpIf(waitToil, jumpCondition);
             //if (compReloader.useAmmo) reloadToil.EndOnDespawnedOrNull(TargetIndex.B);
             yield return reloadToil;
+            yield return jumpToil;
+        }
+
+        bool TryFindAmmo(Pawn byPawn, CompAmmoUser comp, Thing ammoThing)
+        {
+            //Find both inventory & carried thing, prefer inventory
+            Thing thing = byPawn.carryTracker.CarriedThing?.def == ammoThing.def ? byPawn.carryTracker.CarriedThing : null;
+            if (byPawn.TryGetComp<CompInventory>() is CompInventory inv && inv.ammoList.Find(x => x.def == ammoThing.def) is Thing ans)
+            {
+                var Tempthing = ans;
+                inv.ammoList.Remove(ans);
+                byPawn.TryGetComp<CompInventory>().UpdateInventory();
+                byPawn.carryTracker.TryStartCarry(ans);
+                thing = ans;
+            }
+            if (thing == null) { return false; }
+            ammoThing = thing;
+            return true;
         }
         #endregion Methods
     }

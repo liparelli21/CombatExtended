@@ -15,7 +15,6 @@ namespace CombatExtended.Lasers
     // AdeptusMechanicus.Building_LaserGunCE
     public class Building_LaserGunCE : Building_TurretGunCE, IBeamColorThing
     {
-	private static MethodInfo ChangeStoredEnergy = typeof(PowerNet).GetMethod("ChangeStoredEnergy", BindingFlags.Instance | BindingFlags.NonPublic);
         public bool isCharged = false;
         public int previousBurstCooldownTicksLeft = 0;
 
@@ -26,8 +25,14 @@ namespace CombatExtended.Lasers
 
         public int BeamColor
         {
-            get { return LaserColor.IndexBasedOnThingQuality(beamColorIndex, this); }
-            set { beamColorIndex = value; }
+            get
+            {
+                return LaserColor.IndexBasedOnThingQuality(beamColorIndex, this);
+            }
+            set
+            {
+                beamColorIndex = value;
+            }
         }
 
         public override void ExposeData()
@@ -62,11 +67,14 @@ namespace CombatExtended.Lasers
                 }
             }
 
-            if (!(isCharged || burstCooldownTicksLeft > 1)) return;
+            if (!(isCharged || burstCooldownTicksLeft > 1))
+            {
+                return;
+            }
 
             int ticksLeft = burstWarmupTicksLeft;
             base.Tick();
-            if (burstWarmupTicksLeft == def.building.turretBurstWarmupTime.SecondsToTicks() - 1 && ticksLeft == burstWarmupTicksLeft+1)
+            if (burstWarmupTicksLeft == def.building.turretBurstWarmupTime.RandomInRange.SecondsToTicks() - 1 && ticksLeft == burstWarmupTicksLeft + 1)
             {
                 if (AttackVerb.verbProps.soundAiming != null)
                 {
@@ -77,17 +85,25 @@ namespace CombatExtended.Lasers
 
         public float AvailablePower()
         {
-            if (powerComp.PowerNet == null) return 0;
+            if (powerComp.PowerNet == null)
+            {
+                return 0;
+            }
 
-	    return powerComp.PowerNet.CurrentStoredEnergy();
+            return powerComp.PowerNet.CurrentStoredEnergy();
 
         }
         public bool Drain(float amount)
         {
-            if (amount <= 0) return true;
-            if (AvailablePower() < amount) return false;
-
-	    ChangeStoredEnergy.Invoke(powerComp.PowerNet, new object[]{-amount});
+            if (amount <= 0)
+            {
+                return true;
+            }
+            if (AvailablePower() < amount)
+            {
+                return false;
+            }
+            powerComp.PowerNet.ChangeStoredEnergy(-amount);
             return true;
         }
 

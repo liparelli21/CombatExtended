@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <Patch>
 
 	<!-- ========== Base Insect ========== -->
@@ -9,6 +9,37 @@
 			<li Class="CombatExtended.RacePropertiesExtensionCE">
 				<bodyShape>QuadrupedLow</bodyShape>
 			</li>
+		</value>
+	</Operation>
+
+	<Operation Class="PatchOperationAddModExtension">
+		<xpath>Defs/ThingDef[@Name="BaseInsect"]</xpath>
+		<value>
+			<li Class="CombatExtended.PartialArmorExt">
+				<stats>
+					<li>
+						<useStatic>false</useStatic>
+						<ArmorRating_Sharp>0.25</ArmorRating_Sharp>
+						<parts>
+							<li>InsectLeg</li>
+						</parts>
+					</li>
+					<li>
+						<useStatic>false</useStatic>
+						<ArmorRating_Blunt>0.25</ArmorRating_Blunt>
+						<parts>
+							<li>InsectLeg</li>
+						</parts>
+					</li>
+				</stats>
+			</li>
+		</value>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[@Name="BaseInsect"]/statBases</xpath>
+		<value>
+			<PartialArmorBody>0</PartialArmorBody>
 		</value>
 	</Operation>
 
@@ -28,6 +59,7 @@
 		<value>
 			<tools>
 				<li Class="CombatExtended.ToolCE">
+					<label>mandibles</label>
 					<capacities>
 						<li>Bite</li>
 					</capacities>
@@ -55,14 +87,14 @@
 	<Operation Class="PatchOperationReplace">
 		<xpath>Defs/ThingDef[defName="Megascarab"]/statBases/ArmorRating_Blunt</xpath>
 		<value>
-			<ArmorRating_Blunt>1.5</ArmorRating_Blunt>
+			<ArmorRating_Blunt>2.25</ArmorRating_Blunt>
 		</value>
 	</Operation>
 
 	<Operation Class="PatchOperationReplace">
 		<xpath>Defs/ThingDef[defName="Megascarab"]/statBases/ArmorRating_Sharp</xpath>
 		<value>
-			<ArmorRating_Sharp>0.5</ArmorRating_Sharp>
+			<ArmorRating_Sharp>0.7</ArmorRating_Sharp>
 		</value>
 	</Operation>
 
@@ -73,10 +105,26 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Megascarab"]/combatPower</xpath>
+	<Operation Class="PatchOperationConditional">
+		<xpath>Defs/ThingDef[defName="Megascarab"]/comps</xpath>
+		<nomatch Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="Megascarab"]</xpath>
+			<value>
+				<comps />
+			</value>
+		</nomatch>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[defName="Megascarab"]/comps</xpath>
 		<value>
-			<combatPower>20</combatPower>
+			<li Class="CombatExtended.CompProperties_ArmorDurability">
+				<Durability>150</Durability>
+				<Regenerates>true</Regenerates>
+				<RegenInterval>600</RegenInterval>
+				<RegenValue>5</RegenValue>
+				<MinArmorPct>0.5</MinArmorPct>
+			</li>
 		</value>
 	</Operation>
 
@@ -85,7 +133,7 @@
 	<Operation Class="PatchOperationReplace">
 		<xpath>Defs/ThingDef[defName="Spelopede"]/statBases/MoveSpeed</xpath>
 		<value>
-			<MoveSpeed>4.3</MoveSpeed>
+			<MoveSpeed>4.5</MoveSpeed>
 			<MeleeDodgeChance>0.08</MeleeDodgeChance>
 			<MeleeCritChance>0.12</MeleeCritChance>
 			<MeleeParryChance>0.09</MeleeParryChance>
@@ -97,6 +145,7 @@
 		<value>
 			<tools>
 				<li Class="CombatExtended.ToolCE">
+					<label>head claw</label>
 					<capacities>
 						<li>Cut</li>
 					</capacities>
@@ -106,15 +155,16 @@
 					<armorPenetrationSharp>0.36</armorPenetrationSharp>
 					<armorPenetrationBlunt>2.5</armorPenetrationBlunt>
 				</li>
-				  <li Class="CombatExtended.ToolCE">
+				<li Class="CombatExtended.ToolCE">
+					<label>head claw</label>
 					<capacities>
-						<li>Cut</li>
+						<li>Stab</li>
 					</capacities>
 					<power>15</power>
 					<cooldownTime>1.78</cooldownTime>
 					<linkedBodyPartsGroup>HeadClaw</linkedBodyPartsGroup>
-					<armorPenetrationSharp>1.5</armorPenetrationSharp>
-					<armorPenetrationBlunt>2.5</armorPenetrationBlunt>
+					<armorPenetrationSharp>4</armorPenetrationSharp>
+					<armorPenetrationBlunt>2</armorPenetrationBlunt>
 				</li>
 				<li Class="CombatExtended.ToolCE">
 					<label>head</label>
@@ -152,10 +202,26 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Spelopede"]/combatPower</xpath>
+	<Operation Class="PatchOperationConditional">
+		<xpath>Defs/ThingDef[defName="Spelopede"]/comps</xpath>
+		<nomatch Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="Spelopede"]</xpath>
+			<value>
+				<comps />
+			</value>
+		</nomatch>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[defName="Spelopede"]/comps</xpath>
 		<value>
-			<combatPower>80</combatPower>
+			<li Class="CombatExtended.CompProperties_ArmorDurability">
+				<Durability>500</Durability>
+				<Regenerates>true</Regenerates>
+				<RegenInterval>600</RegenInterval>
+				<RegenValue>5</RegenValue>
+				<MinArmorPct>0.5</MinArmorPct>
+			</li>
 		</value>
 	</Operation>
 
@@ -164,7 +230,7 @@
 	<Operation Class="PatchOperationReplace">
 		<xpath>Defs/ThingDef[defName="Megaspider"]/statBases/MoveSpeed</xpath>
 		<value>
-			<MoveSpeed>4.5</MoveSpeed>
+			<MoveSpeed>4.4</MoveSpeed>
 			<MeleeDodgeChance>0.07</MeleeDodgeChance>
 			<MeleeCritChance>0.31</MeleeCritChance>
 			<MeleeParryChance>0.17</MeleeParryChance>
@@ -176,6 +242,7 @@
 		<value>
 			<tools>
 				<li Class="CombatExtended.ToolCE">
+					<label>head claw</label>
 					<capacities>
 						<li>Stab</li>
 					</capacities>
@@ -186,6 +253,7 @@
 					<armorPenetrationBlunt>20</armorPenetrationBlunt>
 				</li>
 				<li Class="CombatExtended.ToolCE">
+					<label>head claw</label>
 					<capacities>
 						<li>Cut</li>
 					</capacities>
@@ -204,8 +272,7 @@
 					<cooldownTime>1.33</cooldownTime>
 					<linkedBodyPartsGroup>HeadAttackTool</linkedBodyPartsGroup>
 					<chanceFactor>0.2</chanceFactor>
-					<armorPenetrationSharp>40</armorPenetrationSharp>
-					<armorPenetrationBlunt>20</armorPenetrationBlunt>
+					<armorPenetrationBlunt>6</armorPenetrationBlunt>
 				</li>
 			</tools>
 		</value>
@@ -232,12 +299,27 @@
 		</value>
 	</Operation>
 
-	<Operation Class="PatchOperationReplace">
-		<xpath>Defs/PawnKindDef[defName="Megaspider"]/combatPower</xpath>
+	<Operation Class="PatchOperationConditional">
+		<xpath>Defs/ThingDef[defName="Megaspider"]/comps</xpath>
+		<nomatch Class="PatchOperationAdd">
+			<xpath>Defs/ThingDef[defName="Megaspider"]</xpath>
+			<value>
+				<comps />
+			</value>
+		</nomatch>
+	</Operation>
+
+	<Operation Class="PatchOperationAdd">
+		<xpath>Defs/ThingDef[defName="Megaspider"]/comps</xpath>
 		<value>
-			<combatPower>130</combatPower>
+			<li Class="CombatExtended.CompProperties_ArmorDurability">
+				<Durability>750</Durability>
+				<Regenerates>true</Regenerates>
+				<RegenInterval>600</RegenInterval>
+				<RegenValue>5</RegenValue>
+				<MinArmorPct>0.5</MinArmorPct>
+			</li>
 		</value>
 	</Operation>
 
 </Patch>
-

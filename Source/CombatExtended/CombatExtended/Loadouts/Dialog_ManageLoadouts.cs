@@ -1,9 +1,10 @@
 ﻿using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Serialization;
 using UnityEngine;
 using Verse;
 
@@ -24,27 +25,33 @@ namespace CombatExtended
     {
         #region Fields
 
-        private static Texture2D
-            //_arrowBottom = ContentFinder<Texture2D>.Get("UI/Icons/arrowBottom"),
-            //_arrowDown = ContentFinder<Texture2D>.Get("UI/Icons/arrowDown"),
-            //_arrowTop = ContentFinder<Texture2D>.Get("UI/Icons/arrowTop"),
-            //_arrowUp = ContentFinder<Texture2D>.Get("UI/Icons/arrowUp"),
-            _darkBackground = SolidColorMaterials.NewSolidColorTexture(0f, 0f, 0f, .2f),
-            //_iconEdit = ContentFinder<Texture2D>.Get("UI/Icons/edit"),
-            _iconClear = ContentFinder<Texture2D>.Get("UI/Icons/clear"),
-            _iconAmmo = ContentFinder<Texture2D>.Get("UI/Icons/ammo"),
-            _iconRanged = ContentFinder<Texture2D>.Get("UI/Icons/ranged"),
-            _iconMelee = ContentFinder<Texture2D>.Get("UI/Icons/melee"),
-            _iconMinified = ContentFinder<Texture2D>.Get("UI/Icons/minified"),
-            _iconGeneric = ContentFinder<Texture2D>.Get("UI/Icons/generic"),
-            _iconAll = ContentFinder<Texture2D>.Get("UI/Icons/all"),
-            _iconAmmoAdd = ContentFinder<Texture2D>.Get("UI/Icons/ammoAdd"),
-            _iconSearch = ContentFinder<Texture2D>.Get("UI/Icons/search"),
-            _iconMove = ContentFinder<Texture2D>.Get("UI/Icons/move"),
-            _iconPickupDrop = ContentFinder<Texture2D>.Get("UI/Icons/loadoutPickupDrop"),
-            _iconDropExcess = ContentFinder<Texture2D>.Get("UI/Icons/loadoutDropExcess");
+        private static int[] _dropOptions2 = new int[] { 0, 1 };
 
-        private static Regex validNameRegex = Outfit.ValidNameRegex;
+        private static Texture2D
+        //_arrowBottom = ContentFinder<Texture2D>.Get("UI/Icons/arrowBottom"),
+        //_arrowDown = ContentFinder<Texture2D>.Get("UI/Icons/arrowDown"),
+        //_arrowTop = ContentFinder<Texture2D>.Get("UI/Icons/arrowTop"),
+        //_arrowUp = ContentFinder<Texture2D>.Get("UI/Icons/arrowUp"),
+        _darkBackground = SolidColorMaterials.NewSolidColorTexture(0f, 0f, 0f, .2f),
+        //_iconEdit = ContentFinder<Texture2D>.Get("UI/Icons/edit"),
+        _iconClear = ContentFinder<Texture2D>.Get("UI/Icons/clear"),
+        _iconAmmo = ContentFinder<Texture2D>.Get("UI/Icons/ammo"),
+        _iconRanged = ContentFinder<Texture2D>.Get("UI/Icons/ranged"),
+        _iconMelee = ContentFinder<Texture2D>.Get("UI/Icons/melee"),
+        _iconMinified = ContentFinder<Texture2D>.Get("UI/Icons/minified"),
+        _iconGeneric = ContentFinder<Texture2D>.Get("UI/Icons/generic"),
+        _iconAll = ContentFinder<Texture2D>.Get("UI/Icons/all"),
+        _iconAmmoAdd = ContentFinder<Texture2D>.Get("UI/Icons/ammoAdd"),
+        _iconEditAttachments = ContentFinder<Texture2D>.Get("UI/Icons/gear"),
+        _iconSearch = ContentFinder<Texture2D>.Get("UI/Icons/search"),
+        _iconMove = ContentFinder<Texture2D>.Get("UI/Icons/move"),
+        _iconPickupDrop = ContentFinder<Texture2D>.Get("UI/Icons/loadoutPickupDrop"),
+        _iconDropExcess = ContentFinder<Texture2D>.Get("UI/Icons/loadoutDropExcess");
+
+        //TODO: 1.5
+        //private static Regex validNameRegex = Outfit.ValidNameRegex;
+
+        private static Regex validNameRegex = new Regex("^.*$");
         private Vector2 _availableScrollPosition = Vector2.zero;
         private const float _barHeight = 24f;
         private Vector2 _countFieldSize = new Vector2(40f, 24f);
@@ -70,26 +77,28 @@ namespace CombatExtended
 
         public Dialog_ManageLoadouts(Loadout loadout)
         {
-        	CurrentLoadout = null;
-        	if (loadout != null && !loadout.defaultLoadout)
-            	CurrentLoadout = loadout;
-            _allSuitableDefs = DefDatabase<ThingDef>.AllDefs.Where(td => !td.menuHidden && IsSuitableThingDef(td)).ToList();
+            CurrentLoadout = null;
+            if (loadout != null && !loadout.defaultLoadout)
+            {
+                CurrentLoadout = loadout;
+            }
+            _allSuitableDefs = DefDatabase<ThingDef>.AllDefs.Where(td => !td.IsMenuHidden() && IsSuitableThingDef(td)).ToList();
             _allDefsGeneric = DefDatabase<LoadoutGenericDef>.AllDefs.OrderBy(g => g.label).ToList();
             _selectableItems = new List<SelectableItem>();
+            List<ThingDef> suitableMapDefs = Find.CurrentMap.listerThings.AllThings.Where((Thing thing) => !thing.PositionHeld.Fogged(thing.MapHeld) && !thing.GetInnerIfMinified().def.Minifiable).Select((Thing thing) => thing.def).Distinct().Intersect(_allSuitableDefs).ToList();
             foreach (var td in _allSuitableDefs)
             {
                 _selectableItems.Add(new SelectableItem()
                 {
                     thingDef = td,
-                    isGreyedOut = (Find.CurrentMap.listerThings.AllThings.Find(thing => thing.GetInnerIfMinified().def == td && !thing.def.Minifiable) == null)
-                        //!thing.PositionHeld.Fogged(thing.MapHeld) //check Thing is visible on map. CPU expensive!
+                    isGreyedOut = (suitableMapDefs.Find((ThingDef def) => def == td) == null)
                 });
             }
             SetSource(SourceSelection.Ranged);
             doCloseX = true;
             forcePause = true;
             absorbInputAroundWindow = true;
-            //doCloseButton = true; //Close button is awkward 
+            //doCloseButton = true; //Close button is awkward
             closeOnClickedOutside = true;
             Utility_Loadouts.UpdateColonistCapacities();
         }
@@ -106,6 +115,10 @@ namespace CombatExtended
             }
             set
             {
+                if (Compatibility.Multiplayer.InMultiplayer && _currentLoadout != null)
+                {
+                    SyncedSetName(_currentLoadout, _currentLoadout.label);
+                }
                 _currentLoadout = value;
             }
         }
@@ -115,15 +128,21 @@ namespace CombatExtended
             get
             {
                 if (_dragging)
+                {
                     return _draggedSlot;
+                }
                 return null;
             }
             set
             {
                 if (value == null)
+                {
                     _dragging = false;
+                }
                 else
+                {
                     _dragging = true;
+                }
                 _draggedSlot = value;
             }
         }
@@ -132,7 +151,7 @@ namespace CombatExtended
         {
             get
             {
-                return new Vector2(700, 700);
+                return new Vector2(1000, 700);
             }
         }
 
@@ -148,21 +167,27 @@ namespace CombatExtended
                     td.thingClass != typeof(MinifiedThing) &&
                     td.thingClass != typeof(UnfinishedThing) &&
                     !td.destroyOnDrop &&
-                    td.category == ThingCategory.Item) 
-                    ||
-                    td.Minifiable;
+                    td.category == ThingCategory.Item)
+                   ||
+                   td.Minifiable;
         }
         public override void DoWindowContents(Rect canvas)
         {
             // fix weird zooming bug
             Text.Font = GameFont.Small;
 
+            const int BUTTON_COUNT = 6;
+            const float BUTTON_STRETCH_FACTOR = 0.8f / (float)BUTTON_COUNT;
+            float buttonWidth = canvas.width * BUTTON_STRETCH_FACTOR;
+
             // SET UP RECTS
             // top buttons
-            Rect selectRect = new Rect(0f, 0f, canvas.width * .2f, _topAreaHeight);
-            Rect newRect = new Rect(selectRect.xMax + _margin, 0f, canvas.width * .2f, _topAreaHeight);
-            Rect copyRect = new Rect(newRect.xMax + _margin, 0f, canvas.width * .2f, _topAreaHeight);
-            Rect deleteRect = new Rect(copyRect.xMax + _margin, 0f, canvas.width * .2f, _topAreaHeight);
+            Rect selectRect = new Rect(0f, 0f, buttonWidth, _topAreaHeight);
+            Rect newRect = new Rect(selectRect.xMax + _margin, 0f, buttonWidth, _topAreaHeight);
+            Rect copyRect = new Rect(newRect.xMax + _margin, 0f, buttonWidth, _topAreaHeight);
+            Rect deleteRect = new Rect(copyRect.xMax + _margin, 0f, buttonWidth, _topAreaHeight);
+            Rect loadRect = new Rect(deleteRect.xMax + _margin, 0f, buttonWidth, _topAreaHeight);
+            Rect saveRect = new Rect(loadRect.xMax + _margin, 0f, buttonWidth, _topAreaHeight);
 
             // main areas
             Rect nameRect = new Rect(
@@ -192,7 +217,7 @@ namespace CombatExtended
                 (canvas.width - _margin) / 2f,
                 canvas.height - 24f - _topAreaHeight - _margin * 3);
 
-        	LoadoutManager.SortLoadouts();
+            LoadoutManager.SortLoadouts();
             List<Loadout> loadouts = LoadoutManager.Loadouts.Where(l => !l.defaultLoadout).ToList();
 
             // DRAW CONTENTS
@@ -200,18 +225,22 @@ namespace CombatExtended
             // select loadout
             if (Widgets.ButtonText(selectRect, "CE_SelectLoadout".Translate()))
             {
-            	
+
                 List<FloatMenuOption> options = new List<FloatMenuOption>();
 
                 if (loadouts.Count == 0)
+                {
                     options.Add(new FloatMenuOption("CE_NoLoadouts".Translate(), null));
+                }
                 else
                 {
                     for (int i = 0; i < loadouts.Count; i++)
                     {
                         int local_i = i;
-                    	options.Add(new FloatMenuOption(loadouts[i].LabelCap, delegate
-                    	{ CurrentLoadout = loadouts[local_i]; }));
+                        options.Add(new FloatMenuOption(loadouts[i].LabelCap, delegate
+                        {
+                            CurrentLoadout = loadouts[local_i];
+                        }));
                     }
                 }
 
@@ -220,16 +249,12 @@ namespace CombatExtended
             // create loadout
             if (Widgets.ButtonText(newRect, "CE_NewLoadout".Translate()))
             {
-                Loadout loadout = new Loadout();
-                loadout.AddBasicSlots();
-                LoadoutManager.AddLoadout(loadout);
-                CurrentLoadout = loadout;
+                CurrentLoadout = NewLoadout();
             }
             // copy loadout
             if (CurrentLoadout != null && Widgets.ButtonText(copyRect, "CE_CopyLoadout".Translate()))
             {
-            	CurrentLoadout = CurrentLoadout.Copy();
-            	LoadoutManager.AddLoadout(CurrentLoadout);
+                CurrentLoadout = CopyLoadout(CurrentLoadout);
             }
             // delete loadout
             if (loadouts.Any(l => l.canBeDeleted) && Widgets.ButtonText(deleteRect, "CE_DeleteLoadout".Translate()))
@@ -242,17 +267,56 @@ namespace CombatExtended
 
                     // don't allow deleting the default loadout
                     if (!loadouts[i].canBeDeleted)
+                    {
                         continue;
+                    }
                     options.Add(new FloatMenuOption(loadouts[i].LabelCap,
-                        delegate
+                                                    delegate
+                    {
+                        if (CurrentLoadout == loadouts[local_i])
                         {
-                            if (CurrentLoadout == loadouts[local_i])
-                                CurrentLoadout = null;
-                            LoadoutManager.RemoveLoadout(loadouts[local_i]);
-                        }));
+                            CurrentLoadout = null;
+                        }
+                        RemoveLoadout(loadouts[local_i]);
+                    }));
                 }
 
                 Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            // load loadout
+            if (Widgets.ButtonText(loadRect, "CE_LoadLoadout".Translate()))
+            {
+                Find.WindowStack.Add(new LoadLoadoutDialog("loadout", (fileInfo, dialog) =>
+                {
+                    Log.Message($"Loading loadout from file '{fileInfo.FullName}'...");
+                    var mySerializer = new XmlSerializer(typeof(LoadoutConfig));
+                    using var myFileStream = new FileStream(fileInfo.FullName, FileMode.Open);
+                    LoadoutConfig loadoutConfig = (LoadoutConfig)mySerializer.Deserialize(myFileStream);
+                    CurrentLoadout = Loadout.FromConfig(loadoutConfig, out List<string> unloadableDefNames);
+                    // Report any LoadoutSlots (i.e. ThingDefs) that could not be loaded.
+                    if (unloadableDefNames.Count > 0)
+                    {
+                        Messages.Message(
+                            "CE_MissingLoadoutSlots".Translate(String.Join(", ", unloadableDefNames)),
+                            null, MessageTypeDefOf.RejectInput);
+                    }
+                    AddLoadoutExpose(CurrentLoadout);
+                    dialog.Close();
+                }));
+            }
+
+            // save loadout
+            if (CurrentLoadout != null && Widgets.ButtonText(saveRect, "CE_SaveLoadout".Translate()))
+            {
+                Find.WindowStack.Add(new SaveLoadoutDialog("loadout", (fileInfo, dialog) =>
+                {
+                    Log.Message($"Saving loadout '{CurrentLoadout.label}' to file '{fileInfo.FullName}'...");
+                    XmlSerializer xmlSerializer = new XmlSerializer(typeof(LoadoutConfig));
+                    using TextWriter writer = new StreamWriter(fileInfo.FullName);
+                    xmlSerializer.Serialize(writer, CurrentLoadout.ToConfig());
+                    dialog.Close();
+                }, CurrentLoadout.label));
             }
 
             // draw notification if no loadout selected
@@ -267,7 +331,7 @@ namespace CombatExtended
                 // and stop further drawing
                 return;
             }
-            
+
             // name
             DrawNameField(nameRect);
 
@@ -305,42 +369,54 @@ namespace CombatExtended
             // Ranged weapons
             GUI.color = _sourceType == SourceSelection.Ranged ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconRanged))
+            {
                 SetSource(SourceSelection.Ranged);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceRangedTip".Translate());
             button.x += 24f + _margin;
 
             // Melee weapons
             GUI.color = _sourceType == SourceSelection.Melee ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconMelee))
+            {
                 SetSource(SourceSelection.Melee);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceMeleeTip".Translate());
             button.x += 24f + _margin;
 
             // Ammo
             GUI.color = _sourceType == SourceSelection.Ammo ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconAmmo))
+            {
                 SetSource(SourceSelection.Ammo);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceAmmoTip".Translate());
             button.x += 24f + _margin;
-            
+
             // Minified
             GUI.color = _sourceType == SourceSelection.Minified ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconMinified))
-            	SetSource(SourceSelection.Minified);
+            {
+                SetSource(SourceSelection.Minified);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceMinifiedTip".Translate());
             button.x += 24f + _margin;
-            
+
             // Generic
             GUI.color = _sourceType == SourceSelection.Generic ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconGeneric))
-            	SetSource(SourceSelection.Generic);
+            {
+                SetSource(SourceSelection.Generic);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceGenericTip".Translate());
             button.x += 24f + _margin;
 
             // All
             GUI.color = _sourceType == SourceSelection.All ? GenUI.MouseoverColor : Color.white;
             if (Widgets.ButtonImage(button, _iconAll))
+            {
                 SetSource(SourceSelection.All);
+            }
             TooltipHandler.TipRegion(button, "CE_SourceAllTip".Translate());
 
             // filter input field
@@ -370,13 +446,15 @@ namespace CombatExtended
         {
             _sourceGeneric = _allDefsGeneric;
             if (!preserveFilter)
+            {
                 _filter = "";
+            }
 
             switch (source)
             {
                 case SourceSelection.Ranged:
                     _source = _selectableItems.Where(row => row.thingDef.IsRangedWeapon).ToList();
-                    _sourceType = SourceSelection.Ranged;                   
+                    _sourceType = SourceSelection.Ranged;
                     break;
 
                 case SourceSelection.Melee:
@@ -393,7 +471,7 @@ namespace CombatExtended
                     _source = _selectableItems.Where(row => row.thingDef.Minifiable).ToList();
                     _sourceType = SourceSelection.Minified;
                     break;
-                
+
                 case SourceSelection.Generic:
                     _sourceType = SourceSelection.Generic;
                     initGenericVisibilityDictionary();
@@ -409,19 +487,31 @@ namespace CombatExtended
             if (!_source.NullOrEmpty())
             {
                 _source = _source.OrderBy(td => td.thingDef.label).ToList();
-            }            
+            }
         }
 
         private void DrawCountField(Rect canvas, LoadoutSlot slot)
         {
             if (slot == null)
+            {
                 return;
+            }
 
             int countInt = slot.count;
             string buffer = countInt.ToString();
             Widgets.TextFieldNumeric<int>(canvas, ref countInt, ref buffer);
             TooltipHandler.TipRegion(canvas, "CE_CountFieldTip".Translate(slot.count));
-            slot.count = countInt;
+            if (slot.count != countInt)
+            {
+                if (Compatibility.Multiplayer.InMultiplayer)
+                {
+                    SetSlotCount(CurrentLoadout, CurrentLoadout.Slots.IndexOf(slot), countInt);
+                }
+                else
+                {
+                    slot.count = countInt;
+                }
+            }
         }
 
         private void DrawFilterField(Rect canvas)
@@ -452,7 +542,9 @@ namespace CombatExtended
 
             Rect labelRect = new Rect(row);
             if (slotDraggable)
+            {
                 labelRect.xMin = draggingHandle.xMax;
+            }
             labelRect.xMax = row.xMax - _countFieldSize.x - _iconSize - 2 * _margin;
 
             Rect countRect = new Rect(
@@ -465,13 +557,60 @@ namespace CombatExtended
                 countRect.xMin - _iconSize - _margin,
                 row.yMin + (row.height - _iconSize) / 2f,
                 _iconSize, _iconSize);
-            
+
             Rect countModeRect = new Rect(
-            	ammoRect.xMin - _iconSize - _margin,
-            	row.yMin + (row.height - _iconSize) / 2f,
-            	_iconSize, _iconSize);
+                ammoRect.xMin - _iconSize - _margin,
+                row.yMin + (row.height - _iconSize) / 2f,
+                _iconSize, _iconSize);
+
+            Rect editAttachmentsRect = new Rect(
+                countModeRect.xMin - _iconSize - _margin,
+                row.yMin + (row.height - _iconSize) / 2f,
+                _iconSize, _iconSize);
 
             Rect deleteRect = new Rect(countRect.xMax + _margin, row.yMin + (row.height - _iconSize) / 2f, _iconSize, _iconSize);
+
+            // prepare attachment config
+            if (slot.isWeaponPlatform && Widgets.ButtonImage(editAttachmentsRect, _iconEditAttachments))
+            {
+                RocketGUI.GUIUtility.DropDownMenu<int>((i) =>
+                {
+                    if (i == 0)
+                    {
+                        return "CE_AttachmentsEditLoadout".Translate();
+                    }
+                    if (i == 1)
+                    {
+                        return "CE_AttachmentsClearLoadout".Translate();
+                    }
+                    throw new NotImplementedException();
+                },
+                (i) =>
+                {
+                    if (i == 0)
+                    {
+                        if (Find.WindowStack.IsOpen<Window_AttachmentsEditor>())
+                        {
+                            Find.WindowStack.TryRemove(typeof(Window_AttachmentsEditor), true);
+                        }
+                        else
+                        {
+                            Find.WindowStack.Add(new Window_AttachmentsEditor(slot.weaponPlatformDef, slot.attachmentLinks, (links) =>
+                            {
+                                if (links != null)
+                                {
+                                    slot.attachments.Clear();
+                                    slot.attachments.AddRange(links.Select(l => l.attachment));
+                                }
+                            }));
+                        }
+                    }
+                    if (i == 1)
+                    {
+                        slot.attachments.Clear();
+                    }
+                }, _dropOptions2);
+            }
 
             // dragging on dragHandle
             if (slotDraggable)
@@ -480,7 +619,9 @@ namespace CombatExtended
                 GUI.DrawTexture(draggingHandle, _iconMove);
 
                 if (Mouse.IsOver(draggingHandle) && Input.GetMouseButtonDown(0))
+                {
                     Dragging = slot;
+                }
             }
 
             // interactions (main row rect)
@@ -516,16 +657,18 @@ namespace CombatExtended
                         {
                             options.Add(new FloatMenuOption(link.ammo.LabelCap, delegate
                             {
-		                        CurrentLoadout.AddSlot(new LoadoutSlot(link.ammo, (magazineSize <= 1 ? link.ammo.defaultAmmoCount : magazineSize)));
+                                AddLoadoutSlotSpecific(CurrentLoadout, link.ammo, (magazineSize <= 1 ? link.ammo.defaultAmmoCount : magazineSize));
                             }));
                         }
                         // Add in the generic for this gun.
                         LoadoutGenericDef generic = DefDatabase<LoadoutGenericDef>.GetNamed("GenericAmmo-" + slot.thingDef.defName);
                         if (generic != null)
-                        	options.Add(new FloatMenuOption(generic.LabelCap, delegate
-							{
-                        		CurrentLoadout.AddSlot(new LoadoutSlot(generic));
-                            }));
+                        {
+                            options.Add(new FloatMenuOption(generic.LabelCap, delegate
+                        {
+                            AddLoadoutSlotGeneric(CurrentLoadout, generic);
+                        }));
+                        }
 
                         Find.WindowStack.Add(new FloatMenu(options, "CE_AddAmmoFor".Translate(slot.thingDef.LabelCap)));
                     }
@@ -534,22 +677,35 @@ namespace CombatExtended
 
             // count
             DrawCountField(countRect, slot);
-            
+
             // toggle count mode
             if (slot.genericDef != null)
             {
-	            Texture2D curModeIcon = slot.countType == LoadoutCountType.dropExcess ? _iconDropExcess : _iconPickupDrop;
-	            string tipString = slot.countType == LoadoutCountType.dropExcess ? "CE_DropExcess".Translate() : "CE_PickupMissingAndDropExcess".Translate();
-	            if (Widgets.ButtonImage(countModeRect, curModeIcon))
-	            	slot.countType = slot.countType == LoadoutCountType.dropExcess ? LoadoutCountType.pickupDrop : LoadoutCountType.dropExcess;
-	            TooltipHandler.TipRegion(countModeRect, tipString);
+                Texture2D curModeIcon = slot.countType == LoadoutCountType.dropExcess ? _iconDropExcess : _iconPickupDrop;
+                string tipString = slot.countType == LoadoutCountType.dropExcess ? "CE_DropExcess".Translate() : "CE_PickupMissingAndDropExcess".Translate();
+                if (Widgets.ButtonImage(countModeRect, curModeIcon))
+                {
+                    if (Compatibility.Multiplayer.InMultiplayer)
+                    {
+                        ChangeCountType(CurrentLoadout, CurrentLoadout.Slots.IndexOf(slot));
+                    }
+                    else
+                    {
+                        slot.countType = slot.countType == LoadoutCountType.dropExcess ? LoadoutCountType.pickupDrop : LoadoutCountType.dropExcess;
+                    }
+                }
+                TooltipHandler.TipRegion(countModeRect, tipString);
             }
 
             // delete
             if (Mouse.IsOver(deleteRect))
+            {
                 GUI.DrawTexture(row, TexUI.HighlightTex);
+            }
             if (Widgets.ButtonImage(deleteRect, _iconClear))
-                CurrentLoadout.RemoveSlot(slot);
+            {
+                RemoveSlot(CurrentLoadout, CurrentLoadout.Slots.IndexOf(slot));
+            }
             TooltipHandler.TipRegion(deleteRect, "CE_DeleteFilter".Translate());
         }
 
@@ -561,11 +717,15 @@ namespace CombatExtended
 
             // create some extra height if we're dragging
             if (Dragging != null)
+            {
                 viewRect.height += _rowHeight;
+            }
 
             // leave room for scrollbar if necessary
             if (viewRect.height > canvas.height)
+            {
                 viewRect.width -= 16f;
+            }
 
             // darken whole area
             GUI.DrawTexture(canvas, _darkBackground);
@@ -590,7 +750,14 @@ namespace CombatExtended
                     // catch mouseUp
                     if (Input.GetMouseButtonUp(0))
                     {
-                        CurrentLoadout.MoveSlot(Dragging, i);
+                        if (Compatibility.Multiplayer.InMultiplayer)
+                        {
+                            MoveSlot(CurrentLoadout, CurrentLoadout.Slots.IndexOf(Dragging), i);
+                        }
+                        else
+                        {
+                            CurrentLoadout.MoveSlot(Dragging, i);
+                        }
                         Dragging = null;
                     }
 
@@ -601,11 +768,15 @@ namespace CombatExtended
 
                 // alternate row background
                 if (i % 2 == 0)
+                {
                     GUI.DrawTexture(row, _darkBackground);
+                }
 
                 // draw the slot - grey out if draggin this, but only when dragged over somewhere else
                 if (Dragging == CurrentLoadout.Slots[i] && !Mouse.IsOver(row))
+                {
                     GUI.color = new Color(.6f, .6f, .6f, .4f);
+                }
                 DrawSlot(row, CurrentLoadout.Slots[i], CurrentLoadout.SlotCount > 1);
                 GUI.color = Color.white;
             }
@@ -625,7 +796,14 @@ namespace CombatExtended
                     // catch mouseUp
                     if (Input.GetMouseButtonUp(0))
                     {
-                        CurrentLoadout.MoveSlot(Dragging, CurrentLoadout.Slots.Count - 1);
+                        if (Compatibility.Multiplayer.InMultiplayer)
+                        {
+                            MoveSlot(CurrentLoadout, CurrentLoadout.Slots.IndexOf(Dragging), CurrentLoadout.Slots.Count - 1);
+                        }
+                        else
+                        {
+                            CurrentLoadout.MoveSlot(Dragging, CurrentLoadout.Slots.Count - 1);
+                        }
                         Dragging = null;
                     }
                 }
@@ -633,19 +811,23 @@ namespace CombatExtended
 
             // cancel drag when mouse leaves the area, or on mouseup.
             if (!Mouse.IsOver(viewRect) || Input.GetMouseButtonUp(0))
+            {
                 Dragging = null;
+            }
 
             Widgets.EndScrollView();
         }
 
         private void DrawSlotSelection(Rect canvas)
         {
-        	int count = _sourceType == SourceSelection.Generic ? _sourceGeneric.Count : _source.Count;
+            int count = _sourceType == SourceSelection.Generic ? _sourceGeneric.Count : _source.Count;
             GUI.DrawTexture(canvas, _darkBackground);
-            
+
             if ((_sourceType != SourceSelection.Generic && _source.NullOrEmpty()) || (_sourceType == SourceSelection.Generic && _sourceGeneric.NullOrEmpty()))
+            {
                 return;
-            
+            }
+
             Rect viewRect = new Rect(canvas);
             viewRect.width -= 16f;
             viewRect.height = count * _rowHeight;
@@ -661,64 +843,189 @@ namespace CombatExtended
                 Color baseColor = GUI.color;
                 if (_sourceType == SourceSelection.Generic)
                 {
-                	if (GetVisibleGeneric(_sourceGeneric[i]))
-                		GUI.color = Color.gray;
-                } else {
-                    if(_source[i].isGreyedOut)
+                    if (GetVisibleGeneric(_sourceGeneric[i]))
+                    {
                         GUI.color = Color.gray;
+                    }
+                }
+                else
+                {
+                    if (_source[i].isGreyedOut)
+                    {
+                        GUI.color = Color.gray;
+                    }
                 }
 
                 Rect row = new Rect(0f, i * _rowHeight, canvas.width, _rowHeight);
                 Rect labelRect = new Rect(row);
                 if (_sourceType == SourceSelection.Generic)
-                	TooltipHandler.TipRegion(row, _sourceGeneric[i].GetWeightAndBulkTip());
+                {
+                    TooltipHandler.TipRegion(row, _sourceGeneric[i].GetWeightAndBulkTip());
+                }
                 else
-                	TooltipHandler.TipRegion(row, _source[i].thingDef.GetWeightAndBulkTip());
+                {
+                    TooltipHandler.TipRegion(row, _source[i].thingDef.GetWeightAndBulkTip());
+                }
 
                 labelRect.xMin += _margin;
                 if (i % 2 == 0)
+                {
                     GUI.DrawTexture(row, _darkBackground);
+                }
 
                 Text.Anchor = TextAnchor.MiddleLeft;
                 Text.WordWrap = false;
                 if (_sourceType == SourceSelection.Generic)
-                	Widgets.Label(labelRect, _sourceGeneric[i].LabelCap);
+                {
+                    Widgets.Label(labelRect, _sourceGeneric[i].LabelCap);
+                }
                 else
-	                Widgets.Label(labelRect, _source[i].thingDef.LabelCap);
+                {
+                    Widgets.Label(labelRect, _source[i].thingDef.LabelCap);
+                }
                 Text.WordWrap = true;
                 Text.Anchor = TextAnchor.UpperLeft;
 
                 Widgets.DrawHighlightIfMouseover(row);
                 if (Widgets.ButtonInvisible(row))
                 {
-                	LoadoutSlot slot;
-                	if (_sourceType == SourceSelection.Generic)
-                		slot = new LoadoutSlot(_sourceGeneric[i]);
-                	else
-                    	slot = new LoadoutSlot(_source[i].thingDef);
-                    CurrentLoadout.AddSlot(slot);
+                    if (_sourceType == SourceSelection.Generic)
+                    {
+                        AddLoadoutSlotGeneric(CurrentLoadout, _sourceGeneric[i]);
+                    }
+                    else
+                    {
+                        AddLoadoutSlotSpecific(CurrentLoadout, _source[i].thingDef);
+                    }
                 }
                 // revert to original color
                 GUI.color = baseColor;
             }
             Widgets.EndScrollView();
         }
-        
+
+        public override void Close(bool doCloseSound = true)
+        {
+            base.Close(doCloseSound);
+
+            if (Compatibility.Multiplayer.InMultiplayer && CurrentLoadout != null)
+            {
+                SyncedSetName(CurrentLoadout, CurrentLoadout.label);
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SyncedSetName(Loadout loadout, string name) => loadout.label = name;
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void AddLoadoutSlotGeneric(Loadout loadout, LoadoutGenericDef generic) => loadout.AddSlot(new LoadoutSlot(generic));
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void AddLoadoutSlotSpecific(Loadout loadout, ThingDef def, int count = 1)
+        => loadout.AddSlot(new LoadoutSlot(def, count));
+
+        // We prefer syncing loadout and slot index, as it's faster than iterating over all of the loadouts first to find the current one.
+        // We don't have direct reference to Loadout from LoadoutSlot, so we can't really speed up the SyncWorker for it.
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void RemoveSlot(Loadout loadout, int index)
+        {
+            if (index >= 0)
+            {
+                loadout.RemoveSlot(index);
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void SetSlotCount(Loadout loadout, int index, int count)
+        {
+            if (index >= 0)
+            {
+                loadout.Slots[index].count = count;
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static Loadout NewLoadout()
+        {
+            Loadout loadout = new Loadout();
+            loadout.AddBasicSlots();
+            LoadoutManager.AddLoadout(loadout);
+
+            // In synced methods, it always returns the default value (as it can't run the method at the time)
+            // so we switch the loadout for the user who added a new one
+            if (Compatibility.Multiplayer.IsExecutingCommandsIssuedBySelf)
+            {
+                Find.WindowStack.WindowOfType<Dialog_ManageLoadouts>().CurrentLoadout = loadout;
+            }
+            return loadout;
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static Loadout CopyLoadout(Loadout loadout)
+        {
+            var copy = loadout.Copy();
+            LoadoutManager.AddLoadout(copy);
+
+            if (Compatibility.Multiplayer.IsExecutingCommandsIssuedBySelf)
+            {
+                Find.WindowStack.WindowOfType<Dialog_ManageLoadouts>().CurrentLoadout = copy;
+            }
+            return copy;
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void RemoveLoadout(Loadout loadout)
+        {
+            if (Compatibility.Multiplayer.InMultiplayer)
+            {
+                Find.WindowStack.WindowOfType<Dialog_ManageLoadouts>().CurrentLoadout = null;
+            }
+            LoadoutManager.RemoveLoadout(loadout);
+        }
+
+        /// <summary>
+        /// Sync the <see cref="Loadout"/> by using <see cref="IExposable"/> interface
+        /// We need to use it in places where we haven't called <see cref="LoadoutManager.AddLoadout(Loadout)"/> yet on that specific loadout.
+        /// </summary>
+        /// <param name="loadout">A specific <see cref="Loadout"/> which we want to sync</param>
+        [Compatibility.Multiplayer.SyncMethod(exposeParameters = new[] { 0 })]
+        private static void AddLoadoutExpose(Loadout loadout) => LoadoutManager.AddLoadout(loadout);
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void MoveSlot(Loadout loadout, int index, int moveIndex)
+        {
+            if (index >= 0)
+            {
+                var slot = loadout.Slots[index];
+                loadout.MoveSlot(slot, moveIndex);
+            }
+        }
+
+        [Compatibility.Multiplayer.SyncMethod]
+        private static void ChangeCountType(Loadout loadout, int index)
+        {
+            if (index >= 0)
+            {
+                var slot = loadout.Slots[index];
+                slot.countType = slot.countType == LoadoutCountType.dropExcess ? LoadoutCountType.pickupDrop : LoadoutCountType.dropExcess;
+            }
+        }
+
         #endregion Methods
-        
-		#region ListDrawOptimization        
-        
-		/* This region is used by DrawSlotSelection and setup by SetSource when Generics type is chosen.
-		 * Purpose is to spread the load out over time, instead of checking the state of every generic per frame, only one generic is tested in a given frame.
+
+        #region ListDrawOptimization
+
+        /* This region is used by DrawSlotSelection and setup by SetSource when Generics type is chosen.
+         * Purpose is to spread the load out over time, instead of checking the state of every generic per frame, only one generic is tested in a given frame.
          * and then some time (frames) are allowed to pass before the next check.
-         * 
+         *
          * The reason is that checking the existence of a generic requires that we consider all possible things.
          * A well written generic won't be too hard to test on a given frame.
          */
-		
+
         static readonly Dictionary<LoadoutGenericDef, VisibilityCache> genericVisibility = new Dictionary<LoadoutGenericDef, VisibilityCache>();
-        const int advanceTicks = 1; //	GenTicks.TicksPerRealSecond / 4;
-        
+        const int advanceTicks = 1; //  GenTicks.TicksPerRealSecond / 4;
+
         /// <summary>
         /// Purpose is to handle deciding if a generic's state (something on the map or not) should be checked or not based on current frame.
         /// </summary>
@@ -726,39 +1033,43 @@ namespace CombatExtended
         /// <returns></returns>
         private bool GetVisibleGeneric(LoadoutGenericDef def)
         {
-        	if (GenTicks.TicksAbs >= genericVisibility[def].ticksToRecheck)
-        	{
-        		genericVisibility[def].ticksToRecheck = GenTicks.TicksAbs + (advanceTicks * genericVisibility[def].position);
-        		genericVisibility[def].check = Find.CurrentMap.listerThings.AllThings.Find(x => def.lambda(x.GetInnerIfMinified().def) && !x.def.Minifiable) == null;
-        	}
-        	
-        	return genericVisibility[def].check;
+            if (GenTicks.TicksAbs >= genericVisibility[def].ticksToRecheck)
+            {
+                genericVisibility[def].ticksToRecheck = GenTicks.TicksAbs + (advanceTicks * genericVisibility[def].position);
+                genericVisibility[def].check = Find.CurrentMap.listerThings.AllThings.Find(x => def.lambda(x.GetInnerIfMinified().def) && !x.def.Minifiable) == null;
+            }
+
+            return genericVisibility[def].check;
         }
-        
+
         private void initGenericVisibilityDictionary()
         {
-        	int tick = GenTicks.TicksAbs;
-        	int position = 1;
-        	foreach (LoadoutGenericDef def in _sourceGeneric)
-        	{
-        		if (!genericVisibility.ContainsKey(def)) genericVisibility.Add(def, new VisibilityCache());
-        		genericVisibility[def].ticksToRecheck = tick;
-        		genericVisibility[def].check = Find.CurrentMap.listerThings.AllThings.Find(x => def.lambda(x.GetInnerIfMinified().def) && !x.def.Minifiable) == null;
-        		genericVisibility[def].position = position;
-        		position++;
-        		tick += advanceTicks;
-        	}
+            int tick = GenTicks.TicksAbs;
+            int position = 1;
+            List<ThingDef> mapDefs = Find.CurrentMap.listerThings.AllThings.Where((Thing thing) => !thing.PositionHeld.Fogged(thing.MapHeld) && !thing.GetInnerIfMinified().def.Minifiable).Select((Thing thing) => thing.def).Distinct().ToList();
+            foreach (LoadoutGenericDef loadoutDef in _sourceGeneric)
+            {
+                if (!genericVisibility.ContainsKey(loadoutDef))
+                {
+                    genericVisibility.Add(loadoutDef, new VisibilityCache());
+                }
+                genericVisibility[loadoutDef].ticksToRecheck = tick;
+                genericVisibility[loadoutDef].check = mapDefs.Find((ThingDef def) => loadoutDef.lambda(def)) == null;
+                genericVisibility[loadoutDef].position = position;
+                position++;
+                tick += advanceTicks;
+            }
         }
-        
+
         private class VisibilityCache
         {
-        	public int ticksToRecheck = 0;
-        	public bool check = true;
-        	public int position = 0;
+            public int ticksToRecheck = 0;
+            public bool check = true;
+            public int position = 0;
         }
-        	
-		#endregion GenericDrawOptimization     
-        
+
+        #endregion GenericDrawOptimization
+
         private class SelectableItem
         {
             public ThingDef thingDef;
